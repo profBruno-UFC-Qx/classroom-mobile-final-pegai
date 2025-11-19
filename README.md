@@ -3,10 +3,10 @@
 # Proposta de aplicativo
 
 ## Equipe
-* **Nome do Aluno(a) 1:** Guilherme Barros Vieira de Araujo   - 509873
+* **Nome do Aluno(a) 1:** Guilherme Barros Vieira de Araujo - 509873
 * **Nome do Aluno(a) 2:** Francisco Edinaldo dos Santos Silva - 586043
-* **Nome do Aluno(a) 3:** José Adrian Nascimento Silva        - 475594
-* **Nome do Aluno(a) 4:** Petrucio de Carvalho Neves Filho    - 469854
+* **Nome do Aluno(a) 3:** José Adrian Nascimento Silva - 475594
+* **Nome do Aluno(a) 4:** Petrucio de Carvalho Neves Filho - 469854
 
 ---
 
@@ -14,20 +14,26 @@
 Pegaí
 
 ## Descrição do Projeto
-O Pegaí é uma plataforma mobile de aluguel de materiais acadêmicos que reduz o custo extra dos calouros e promove o consumo sustentável.
-Para utilizar o app, o usuário se cadastra com as suas informações  institucionais (nome, matrícula, curso, etc.), onde será possível realizar o empréstimo de materiais usados ou então alugá-los.
+O Pegaí é uma plataforma mobile *peer-to-peer* (P2P) de aluguel de materiais acadêmicos, projetada para reduzir custos estudantis desnecessários. Diferente de um simples classificado, o aplicativo gerencia todo o **ciclo de vida da transação**, garantindo segurança através de processos de validação visual e reputação.
+
+Para garantir robustez técnica e atender aos requisitos de complexidade, definimos a seguinte arquitetura:
+1.  **APIs Externas:** Utilizaremos **Google Maps/Mapbox** para a geolocalização dos itens, **Firebase Auth** para gestão segura de identidades, **Firebase Storage** para o upload das imagens de vistoria e **Firebase Cloud Messaging (FCM)** para notificações push em tempo real. 
+2.  **Persistência Local e Cache:** Adotaremos uma estratégia de otimização onde os dados críticos (usuários, negociações e catálogo) residem na API para evitar conflitos, enquanto o banco de dados local (**Room/SQLite**) armazenará cache de itens visualizados recentemente, histórico de buscas e preferências do usuário, garantindo agilidade na navegação e economia de dados.
+
+A lógica de negócio central foca em um sistema de avaliação bilateral e gamificação, calculando scores de confiabilidade para locadores e locatários, promovendo um ambiente seguro e moderado pela própria comunidade.
 
 ---
 
 ## Funcionalidades Principais
-[Liste as principais funcionalidades do projeto. Use caixas de seleção para que a equipe possa marcar as concluídas nas próximas etapas.]
 
-- [ ] Cadastro de Usúarios: O universitário poder se cadastrar.
-- [ ] Cadastro de Objetos: Tela em que os usuários possam cadastrar o objeto que irá alugar
-- [ ] Pesquisa de Objetos: Tela com a funcionalidade para o usuário poder pesquisar os materiais
-- [ ] Alugar objetos: Tela com a funcionalidade de realizar o aluguel
-- [ ] Perfil do Usuário: Tela com a funcionalidade Do usuário colocar e editar suas informações
-- [ ] Geolocalização: Funcionalidade para que busque apenas os objetos próximos.
+- [ ] **Vistoria Digital (Check-in com Câmera):** Fluxo obrigatório no momento da entrega, onde o locador utiliza a câmera nativa para registrar o estado do objeto. As fotos são enviadas para o **Firebase Storage** servindo de evidência imutável.
+- [ ] **Busca Georreferenciada:** Integração com **Google Maps API** para permitir que o usuário filtre materiais disponíveis em um raio de proximidade.
+- [ ] **Chat em Tempo Real:** Canal de mensagens integrado para que locador e locatário combinem o local de encontro e a devolução, mantendo a privacidade dos dados de contato pessoais.
+- [ ] **Notificações Push (FCM):** Sistema de alertas para avisar o usuário sobre aprovação de pedidos, novas mensagens no chat ou data de devolução próxima.
+- [ ] **Sistema de Reputação e Score:** Algoritmo de avaliação bilateral (locador e locatário se avaliam) pós-devolução. O sistema calcula uma nota de confiabilidade pública baseada em pontualidade e cuidado com o item.
+- [ ] **Simulação de Gateway de Pagamento:** Implementação de um módulo de pagamento simulado (Mock) que reproduz os estados de uma transação real (Processando, Aprovado, Recusado). O sistema valida dados de cartão de crédito ou gera códigos PIX fictícios para demonstrar o fluxo financeiro completo e a mudança de status dos pedidos no banco de dados.
+- [ ] **Persistência de Cache:** Utilização de banco de dados local para salvar histórico de buscas e itens recentes, melhorando a experiência de navegação.
+
 ---
 
 > [!WARNING]
