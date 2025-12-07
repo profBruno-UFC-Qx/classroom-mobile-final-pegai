@@ -6,5 +6,6 @@ package com.pegai.app.model
 data class User(
     val id: String,
     val nome: String,
-    val fotoUrl: String? = null
+    val fotoUrl: String? = null,
+    val localizacao: String? = null
 )

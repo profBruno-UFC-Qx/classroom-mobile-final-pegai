@@ -17,6 +17,5 @@ data class Product(
      * O valor padrão é 5.0 para novos itens.
      */
     val nota: Double = 5.0,
-
-    val imagemUrl: String? = null
+    val imageUrl: String
 )

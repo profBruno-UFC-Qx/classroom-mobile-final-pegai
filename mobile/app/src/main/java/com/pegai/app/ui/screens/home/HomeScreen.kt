@@ -1,76 +1,160 @@
 package com.pegai.app.ui.screens.home
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.pegai.app.model.Product
 import com.pegai.app.model.User
 
 /**
- * Tela principal do Pegaí.
- * Exibe o cabeçalho do usuário, busca, filtros por categoria e a grade de produtos.
+ * Tela principal da aplicação.
+ * Gerencia a exibição de produtos, categorias, busca e permissões de localização.
  */
 @Composable
 fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = viewModel()
 ) {
+    // Estados observados do ViewModel
     val produtos by viewModel.produtos.collectAsState()
+    val produtosPopulares by viewModel.produtosPopulares.collectAsState()
     val usuarioLogado by viewModel.usuarioLogado.collectAsState()
+    val localizacaoAtual by viewModel.enderecoAtual.collectAsState()
     val categoriaSelecionada by viewModel.categoriaSelecionada.collectAsState()
     val categorias = viewModel.categorias
 
+    val context = LocalContext.current
+
+    // --- LÓGICA DE PERMISSÃO DE GPS ---
+    val launcherPermissao = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissoes ->
+        val concedido = permissoes[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissoes[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (concedido) {
+            viewModel.obterLocalizacaoAtual(context)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val temPermissaoFina = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val temPermissaoGrossa = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+        if (temPermissaoFina || temPermissaoGrossa) {
+            viewModel.obterLocalizacaoAtual(context)
+        } else {
+            launcherPermissao.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ))
+        }
+    }
+
+    // --- UI ---
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
         HomeHeader(
             user = usuarioLogado,
-            onLoginClick = { viewModel.simularLogin() }
+            localizacao = localizacaoAtual,
+            onLoginClick = { viewModel.simularLogin() },
+            onFavoritesClick = { navController.navigate("favorites") }
         )
 
-        SearchBar()
+        Spacer(modifier = Modifier.height(8.dp))
 
-        CategoryRow(
-            categorias = categorias,
-            selecionada = categoriaSelecionada,
-            onCategoriaClick = { novaCategoria ->
-                viewModel.selecionarCategoria(novaCategoria)
-            }
-        )
-
-        // Grade de produtos
+        // Grid principal rolavel
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            // Padding bottom extra para garantir que o último item não fique escondido atrás da BottomBar
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 100.dp),
+            modifier = Modifier.weight(1f)
         ) {
+            // Barra de Pesquisa
+            item(span = { GridItemSpan(2) }) {
+                SearchBar()
+            }
+
+            // Filtro de Categorias
+            item(span = { GridItemSpan(2) }) {
+                CategoryRow(
+                    categorias = categorias,
+                    selecionada = categoriaSelecionada,
+                    onCategoriaClick = { viewModel.selecionarCategoria(it) }
+                )
+            }
+
+            // Seção: Populares (Carrossel Horizontal)
+            item(span = { GridItemSpan(2) }) {
+                Column {
+                    Text(
+                        text = "Populares",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 2.dp)
+                    ) {
+                        items(produtosPopulares) { produto ->
+                            CompactProductCard(produto)
+                        }
+                    }
+                }
+            }
+
+            // Seção: Para Você
+            item(span = { GridItemSpan(2) }) {
+                Text(
+                    text = "Para Você",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                )
+            }
+
+            // Lista de Produtos Grid
             items(produtos) { produto ->
                 ProductCard(produto)
             }
@@ -78,112 +162,197 @@ fun HomeScreen(
     }
 }
 
-/**
- * Card individual que exibe a foto (placeholder), preço, título e dono do produto.
- */
+// COMPONENTES AUXILIARES
 @Composable
 fun ProductCard(product: Product) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(260.dp),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            // Área da Imagem e Preço
+        Column(modifier = Modifier.padding(8.dp)) {
+            // Imagem e Preço
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .background(Color(0xFFF0F0F0))
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFF8F8F8))
             ) {
+                AsyncImage(
+                    model = product.imageUrl, // ATENÇÃO: Verifique se no Model é 'imagemUrl' ou 'imageUrl'
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
                 IconButton(
-                    onClick = { /* TODO: Implementar favoritar */ },
+                    onClick = { /* TODO: Favoritar */ },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.FavoriteBorder,
                         contentDescription = "Favoritar",
-                        tint = Color.Gray
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(12.dp),
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.primary
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF9C27B0) // Roxo
                 ) {
                     Text(
                         text = "R$ ${product.preco} / dia",
                         color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
             }
 
-            // Área de Detalhes
-            Column(modifier = Modifier.padding(16.dp)) {
+            // Textos
+            Column(modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp)) {
                 Text(
                     text = product.titulo,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    maxLines = 1,
+                    color = Color.Black
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Dono: ${product.dono}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
                     Icon(
                         imageVector = Icons.Default.Star,
-                        contentDescription = null, // Decorativo
+                        contentDescription = "Nota",
                         tint = Color(0xFFFFB800),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(2.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = product.nota.toString(),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = " (201)",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Dono: ${product.dono}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
             }
         }
     }
 }
 
-/**
- * Cabeçalho dinâmico. Mostra saudação se logado, ou botão de entrar se visitante.
- */
+@Composable
+fun CompactProductCard(product: Product) {
+    Card(
+        modifier = Modifier
+            .width(150.dp)
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF8F8F8))
+            ) {
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(4.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFF9C27B0)
+                ) {
+                    Text(
+                        text = "R$ ${product.preco}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = product.titulo,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                color = Color.Black
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB800),
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = product.nota.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun HomeHeader(
     user: User?,
-    onLoginClick: () -> Unit
+    localizacao: String,
+    onLoginClick: () -> Unit,
+    onFavoritesClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 24.dp),
+            .padding(bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Saudação
+        // Saudação e Localização
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (user != null) {
                 Box(
@@ -193,12 +362,21 @@ fun HomeHeader(
                         .background(Color.LightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = user.nome.first().toString(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    if (user.fotoUrl != null) {
+                        AsyncImage(
+                            model = user.fotoUrl,
+                            contentDescription = "Foto de Perfil",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text(
+                            text = user.nome.first().toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -209,50 +387,90 @@ fun HomeHeader(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "O que vamos alugar hoje?",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = localizacao,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
                 }
             } else {
+                // Visitante
                 Column {
                     Text(
                         text = "Bem-vindo ao Pegaí",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "Economize com materiais usados",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = localizacao,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
         }
 
-        // Ações (Notificação ou Botão Entrar)
-        if (user != null) {
-            IconButton(
-                onClick = { /* TODO: Tela de Notificações */ },
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color.White, CircleShape)
-                    .border(1.dp, Color(0xFFE0E0E0), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = "Notificações",
-                    tint = Color.Black
-                )
-            }
-        } else {
-            Button(
-                onClick = onLoginClick,
-                shape = RoundedCornerShape(50),
-                contentPadding = PaddingValues(horizontal = 24.dp)
-            ) {
-                Text("Entrar")
+        // Botões de Ação
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (user != null) {
+                IconButton(
+                    onClick = onFavoritesClick,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(48.dp)
+                        .background(Color.White, CircleShape)
+                        .border(1.dp, Color(0xFFE0E0E0), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Favoritos",
+                        tint = Color.Black
+                    )
+                }
+
+                IconButton(
+                    onClick = { /* TODO: Notificações */ },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color.White, CircleShape)
+                        .border(1.dp, Color(0xFFE0E0E0), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = "Notificações",
+                        tint = Color.Black
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onLoginClick,
+                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00BCD4),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Entrar")
+                }
             }
         }
     }
@@ -260,47 +478,56 @@ fun HomeHeader(
 
 @Composable
 fun SearchBar() {
-    OutlinedTextField(
-        value = "",
-        onValueChange = {},
+    // TODO: Adicionar estado real de texto aqui futuramente
+    val textoPesquisa by remember { mutableStateOf("") }
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
             .padding(bottom = 8.dp),
-        placeholder = {
-            Text(
-                text = "O que você procura?",
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1
-            )
-        },
-        leadingIcon = {
+        shape = RoundedCornerShape(50),
+        color = Color(0xFFFFFFFF),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(
-                Icons.Default.Search,
+                imageVector = Icons.Default.Search,
                 contentDescription = null,
                 tint = Color.Gray,
                 modifier = Modifier.size(20.dp)
             )
-        },
-        trailingIcon = {
-            IconButton(onClick = { /* TODO: Abrir Filtros */ }) {
-                Icon(
-                    Icons.Default.List,
-                    contentDescription = "Filtros",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Box(modifier = Modifier.weight(1f)) {
+                // Placeholder condicional: Só aparece se o texto estiver vazio
+                if (textoPesquisa.isEmpty()) {
+                    Text(
+                        text = "O que você procura?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+                BasicTextField(
+                    value = textoPesquisa,
+                    onValueChange = { /* TODO: Atualizar estado */ },
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = Color.Black,
+                        fontSize = 14.sp
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-        },
-        shape = RoundedCornerShape(50),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = Color(0xFFF5F5F5),
-            focusedContainerColor = Color.White,
-            unfocusedBorderColor = Color.Transparent,
-            focusedBorderColor = MaterialTheme.colorScheme.primary
-        ),
-        singleLine = true
-    )
+        }
+    }
 }
 
 @Composable
@@ -319,17 +546,24 @@ fun CategoryRow(
             FilterChip(
                 selected = isSelected,
                 onClick = { onCategoriaClick(categoria) },
-                label = { Text(categoria) },
+                label = {
+                    Text(
+                        text = categoria,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                },
+                modifier = Modifier.height(32.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedContainerColor = Color(0xFF3D5AFE),
                     selectedLabelColor = Color.White,
-                    containerColor = Color(0xFFF5F5F5),
-                    labelColor = Color.Black
+                    containerColor = Color(0xFFFFFFFF),
+                    labelColor = Color.Gray
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = isSelected,
-                    borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                    borderColor = if (isSelected) Color(0xFF3D5AFE) else Color(0xFFEEEEEE),
+                    borderWidth = 1.dp
                 ),
                 shape = RoundedCornerShape(50)
             )
