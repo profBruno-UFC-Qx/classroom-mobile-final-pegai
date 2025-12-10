@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
@@ -20,20 +21,24 @@ import com.pegai.app.ui.screens.add.AddScreen
 import com.pegai.app.ui.screens.chat.ChatScreen
 import com.pegai.app.ui.screens.favorites.FavoritesScreen
 import com.pegai.app.ui.screens.home.HomeScreen
+import com.pegai.app.ui.screens.login.LoginScreen
 import com.pegai.app.ui.screens.orders.OrdersScreen
 import com.pegai.app.ui.screens.profile.ProfileScreen
 import com.pegai.app.ui.theme.PegaíTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.pegai.app.ui.viewmodel.AuthViewModel
 
 /**
  * Ponto de entrada da aplicação.
  * Configura o tema, a navegação principal e a barra de status/navegação.
  */
 class MainActivity : ComponentActivity() {
+    private val authViewModel: AuthViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         var isReady = false
+
 
         splashScreen.setKeepOnScreenCondition { !isReady }
 
@@ -74,9 +79,8 @@ class MainActivity : ComponentActivity() {
                         startDestination = "home",
                         modifier = Modifier.padding(paddingValues)
                     ) {
-                        composable("home") { HomeScreen(navController = navController) }
-
-                        // Telas Secundárias
+                        composable("home") { HomeScreen(navController = navController, authViewModel = authViewModel) }
+                        composable("login") { LoginScreen(navController = navController, authViewModel = authViewModel) }
                         composable("orders") { OrdersScreen() }
                         composable("add") { AddScreen() }
                         composable("favorites") { FavoritesScreen() }

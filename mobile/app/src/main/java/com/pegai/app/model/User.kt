@@ -4,8 +4,12 @@ package com.pegai.app.model
  * Representa um usuário cadastrado no Pegaí.
  */
 data class User(
-    val id: String,
-    val nome: String,
-    val fotoUrl: String? = null,
-    val localizacao: String? = null
+    val uid: String = "",
+    val nome: String = "",
+    val sobrenome: String = "",
+    val email: String = "",
+    val telefone: String = "",
+    val curso: String = "",
+    val matricula: String = "",
+    val fotoUrl: String = ""
 )

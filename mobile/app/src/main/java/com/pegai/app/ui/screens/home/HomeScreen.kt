@@ -38,6 +38,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.model.Product
 import com.pegai.app.model.User
+import com.pegai.app.ui.viewmodel.AuthViewModel
 
 /**
  * Tela principal da aplicação.
@@ -46,12 +47,13 @@ import com.pegai.app.model.User
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    authViewModel: AuthViewModel
 ) {
     // Estados observados do ViewModel
     val produtos by viewModel.produtos.collectAsState()
     val produtosPopulares by viewModel.produtosPopulares.collectAsState()
-    val usuarioLogado by viewModel.usuarioLogado.collectAsState()
+    val usuarioLogado by authViewModel.usuarioLogado.collectAsState()
     val localizacaoAtual by viewModel.enderecoAtual.collectAsState()
     val categoriaSelecionada by viewModel.categoriaSelecionada.collectAsState()
     val categorias = viewModel.categorias
@@ -95,7 +97,7 @@ fun HomeScreen(
         HomeHeader(
             user = usuarioLogado,
             localizacao = localizacaoAtual,
-            onLoginClick = { viewModel.simularLogin() },
+            onLoginClick = { navController.navigate("login") },
             onFavoritesClick = { navController.navigate("favorites") }
         )
 
@@ -343,7 +345,8 @@ fun HomeHeader(
     user: User?,
     localizacao: String,
     onLoginClick: () -> Unit,
-    onFavoritesClick: () -> Unit
+    onFavoritesClick: () -> Unit,
+
 ) {
     Row(
         modifier = Modifier
@@ -362,7 +365,7 @@ fun HomeHeader(
                         .background(Color.LightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (user.fotoUrl != null) {
+                    if (user.fotoUrl != "") {
                         AsyncImage(
                             model = user.fotoUrl,
                             contentDescription = "Foto de Perfil",

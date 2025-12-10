@@ -36,10 +36,6 @@ class HomeViewModel : ViewModel() {
         initialValue = emptyList()
     )
 
-    private val _usuarioLogado = MutableStateFlow<User?>(null)
-    /** Usuário da sessão atual. Null se estiver deslogado. */
-    val usuarioLogado: StateFlow<User?> = _usuarioLogado.asStateFlow()
-
     private val _enderecoAtual = MutableStateFlow("Localização desconhecida")
     /** String formatada com a Rua/Bairro atual do usuário. */
     val enderecoAtual: StateFlow<String> = _enderecoAtual.asStateFlow()
@@ -62,14 +58,6 @@ class HomeViewModel : ViewModel() {
     fun selecionarCategoria(novaCategoria: String) {
         _categoriaSelecionada.value = novaCategoria
         // TODO: Implementar filtro real da lista `_produtos` aqui se necessário
-    }
-
-    fun simularLogin() {
-        _usuarioLogado.value = User(
-            id = "1",
-            nome = "Edinaldo",
-            fotoUrl = "https://media-for2-2.cdn.whatsapp.net/v/t61.24694-24/537374086_697212073422555_5417296598778872192_n.jpg?ccb=11-4&oh=01_Q5Aa3QEAZeWdNi1rJWQgcPs--M18nmUGu1gpjp3p2XzVamf9dg&oe=69425A94&_nc_sid=5e03e0&_nc_cat=105"
-        )
     }
 
     /**
