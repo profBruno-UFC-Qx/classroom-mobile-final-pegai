@@ -1,6 +1,7 @@
 package com.pegai.app.ui.screens.home
 
 import android.Manifest
+import android.R
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,6 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -174,6 +177,7 @@ fun ProductCard(product: Product) {
         border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
+
         Column(modifier = Modifier.padding(8.dp)) {
             // Imagem e Preço
             Box(
@@ -184,7 +188,7 @@ fun ProductCard(product: Product) {
                     .background(Color(0xFFF8F8F8))
             ) {
                 AsyncImage(
-                    model = product.imageUrl, // ATENÇÃO: Verifique se no Model é 'imagemUrl' ou 'imageUrl'
+                    model = product.imageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -209,7 +213,7 @@ fun ProductCard(product: Product) {
                         .align(Alignment.BottomStart)
                         .padding(8.dp),
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF9C27B0) // Roxo
+                    color = Color(0xFF2F7DBF) // Roxo
                 ) {
                     Text(
                         text = "R$ ${product.preco} / dia",
@@ -297,7 +301,7 @@ fun CompactProductCard(product: Product) {
                         .align(Alignment.BottomStart)
                         .padding(4.dp),
                     shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFF9C27B0)
+                    color = Color (0xFF2F7DBF)
                 ) {
                     Text(
                         text = "R$ ${product.preco}",
@@ -346,8 +350,18 @@ fun HomeHeader(
     localizacao: String,
     onLoginClick: () -> Unit,
     onFavoritesClick: () -> Unit,
-
 ) {
+    // Gradiente do Botão "Entrar"
+    val blueGreenGradient = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF0A5C8A), // Azul escuro
+            Color(0xFF0E8FC6), // Azul médio
+            Color(0xFF2ED1B2)  // Verde água
+        ),
+        start = Offset(0f, 0f),
+        end = Offset(300f, 100f)
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -463,16 +477,23 @@ fun HomeHeader(
                     )
                 }
             } else {
-                Button(
-                    onClick = onLoginClick,
-                    shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(horizontal = 24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00BCD4),
-                        contentColor = Color.White
-                    )
+                // BOTÃO COM GRADIENTE
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(blueGreenGradient)
                 ) {
-                    Text("Entrar")
+                    Button(
+                        onClick = onLoginClick,
+                        shape = RoundedCornerShape(50),
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Entrar")
+                    }
                 }
             }
         }
@@ -481,7 +502,6 @@ fun HomeHeader(
 
 @Composable
 fun SearchBar() {
-    // TODO: Adicionar estado real de texto aqui futuramente
     val textoPesquisa by remember { mutableStateOf("") }
 
     Surface(
@@ -510,7 +530,6 @@ fun SearchBar() {
             Spacer(modifier = Modifier.width(12.dp))
 
             Box(modifier = Modifier.weight(1f)) {
-                // Placeholder condicional: Só aparece se o texto estiver vazio
                 if (textoPesquisa.isEmpty()) {
                     Text(
                         text = "O que você procura?",
@@ -539,6 +558,9 @@ fun CategoryRow(
     selecionada: String,
     onCategoriaClick: (String) -> Unit
 ) {
+    // Nova cor principal definida (Azul Médio)
+    val mainColor = Color(0xFF0E8FC6)
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(bottom = 24.dp)
@@ -557,7 +579,7 @@ fun CategoryRow(
                 },
                 modifier = Modifier.height(32.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF3D5AFE),
+                    selectedContainerColor = mainColor, // USANDO A NOVA COR AQUI
                     selectedLabelColor = Color.White,
                     containerColor = Color(0xFFFFFFFF),
                     labelColor = Color.Gray
@@ -565,7 +587,7 @@ fun CategoryRow(
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = isSelected,
-                    borderColor = if (isSelected) Color(0xFF3D5AFE) else Color(0xFFEEEEEE),
+                    borderColor = if (isSelected) mainColor else Color(0xFFEEEEEE), // E AQUI NA BORDA
                     borderWidth = 1.dp
                 ),
                 shape = RoundedCornerShape(50)

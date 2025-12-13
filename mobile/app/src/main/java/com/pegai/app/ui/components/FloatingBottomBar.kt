@@ -1,6 +1,5 @@
 package com.pegai.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
@@ -42,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.material.icons.filled.Email
+
 data class BottomNavItem(
     val label: String,
     val route: String,
@@ -65,29 +64,24 @@ fun FloatingBottomBar(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // 1. Calculamos a altura exata da área de gestos/botões do sistema
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-    // 2. A altura total da nossa barra será: 80dp (conteúdo) + altura do sistema
     val totalHeight = 80.dp + navBarHeight
+    val mainColor = Color(0xFF0E8FC6)
 
-    // Box Principal
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(totalHeight),
         contentAlignment = Alignment.TopCenter
     ) {
-        // --- CAMADA 1: A Barra Branca ---
+        // Background Surface
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = Color.White,
-            // AQUI ESTÁ A MUDANÇA PARA ARREDONDAR OS CANTOS SUPERIORES 👇
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             shadowElevation = 16.dp
         ) {
             Column {
-                // Área dos Ícones (80dp fixos)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -96,42 +90,48 @@ fun FloatingBottomBar(navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Esquerda
                     Row(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         leftItems.forEach { item ->
-                            CustomNavItem(item = item, currentRoute = currentRoute, navController = navController)
+                            CustomNavItem(
+                                item = item,
+                                currentRoute = currentRoute,
+                                navController = navController,
+                                activeColor = mainColor
+                            )
                         }
                     }
 
                     Spacer(modifier = Modifier.size(60.dp))
 
-                    // Direita
                     Row(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         rightItems.forEach { item ->
-                            CustomNavItem(item = item, currentRoute = currentRoute, navController = navController)
+                            CustomNavItem(
+                                item = item,
+                                currentRoute = currentRoute,
+                                navController = navController,
+                                activeColor = mainColor
+                            )
                         }
                     }
                 }
-
-                // Espaço para os gestos do sistema
                 Spacer(modifier = Modifier.height(navBarHeight))
             }
         }
 
-        // --- CAMADA 2: O Botão Central ---
+        // Floating Action Button
         Surface(
             modifier = Modifier
                 .size(64.dp)
-                .offset(y = (5).dp),
+                .offset(y = 5.dp),
             shadowElevation = 2.dp,
             shape = CircleShape,
-            color = Color(0xFF3D5AFE),
+            color = mainColor,
             onClick = {
                 navController.navigate("add") {
                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -156,10 +156,11 @@ fun FloatingBottomBar(navController: NavController) {
 fun CustomNavItem(
     item: BottomNavItem,
     currentRoute: String?,
-    navController: NavController
+    navController: NavController,
+    activeColor: Color
 ) {
     val isSelected = currentRoute == item.route
-    val selectedColor = Color(0xFF3D5AFE)
+    val selectedColor = activeColor
     val unselectedColor = Color.LightGray
 
     Column(

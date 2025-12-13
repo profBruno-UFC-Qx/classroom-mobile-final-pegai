@@ -26,6 +26,7 @@ import com.pegai.app.ui.screens.home.HomeScreen
 import com.pegai.app.ui.screens.login.LoginScreen
 import com.pegai.app.ui.screens.orders.OrdersScreen
 import com.pegai.app.ui.screens.profile.ProfileScreen
+import com.pegai.app.ui.screens.register.RegisterScreen
 import com.pegai.app.ui.theme.PegaíTheme
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
@@ -64,8 +65,8 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                // Exibe a bottom bar apenas se a rota atual não for "login"
-                val showBottomBar = currentRoute != "login"
+                // Esconde a barra de nav se for Login OU Register
+                val showBottomBar = currentRoute != "login" && currentRoute != "register"
 
                 Scaffold(
                     bottomBar = {
@@ -92,6 +93,10 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 authViewModel = authViewModel
                             )
+                        }
+
+                        composable("register") {
+                            RegisterScreen(navController = navController)
                         }
                         composable("orders") { OrdersScreen() }
                         composable("add") { AddScreen() }

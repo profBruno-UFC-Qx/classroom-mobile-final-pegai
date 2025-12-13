@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
@@ -16,8 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +29,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pegai.app.R
@@ -62,17 +67,24 @@ fun LoginScreen(
     ) {
 
         // ==============================================================
-        // 1. HEADER — Botão Voltar
+        // 1. HEADER (COM SOMBRA E FUNDO BRANCO)
         // ==============================================================
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .zIndex(1f)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = RectangleShape,
+                    spotColor = Color.Gray,
+                    ambientColor = Color.Gray
+                )
+                .background(Color.White)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
                 onClick = {
-                    // Navega para home com popUpTo
                     navController.navigate("home") {
                         popUpTo("login") { inclusive = true }
                         launchSingleTop = true
@@ -89,7 +101,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = "Voltar",
+                text = "Login",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = CinzaTexto
@@ -105,7 +117,6 @@ fun LoginScreen(
                 .padding(10.dp)
                 .background(Color.White)
         ) {
-            // Imagens decorativas com baixa opacidade
             Image(
                 painter = painterResource(id = R.drawable.ecosistema),
                 contentDescription = null,
@@ -151,12 +162,11 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(1.dp))
 
         // ==============================================================
-        // 3. ÁREA DE FORMULÁRIO — Inputs e Botões
+        // 3. ÁREA DE FORMULÁRIO (COM SCROLL)
         // ==============================================================
         Box(
             modifier = Modifier.fillMaxWidth().weight(1f)
         ) {
-            // Fundo ondulado
             Image(
                 painter = painterResource(id = R.drawable.fundo_ondulado),
                 contentDescription = null,
@@ -165,8 +175,12 @@ fun LoginScreen(
                 alignment = Alignment.TopCenter
             )
 
+            // AQUI ESTÁ A CORREÇÃO: ADICIONADO .verticalScroll()
             Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 160.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()) // <--- Permite rolar quando o teclado sobe ou tela vira
+                    .padding(top = 160.dp, bottom = 20.dp), // Padding bottom para garantir espaço no fim do scroll
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
@@ -290,7 +304,9 @@ fun LoginScreen(
 
                 // ===== BOTÃO CRIAR CONTA =====
                 Button(
-                    onClick = { },
+                    onClick = {
+                        navController.navigate("register")
+                    },
                     colors = ButtonDefaults.buttonColors(AzulPrincipal),
                     modifier = Modifier.width(larguraInputs).height(48.dp),
                     shape = RoundedCornerShape(25.dp)
@@ -319,6 +335,9 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Entrar com Google", fontSize = 14.sp)
                 }
+
+                // Espaço extra no final
+                Spacer(modifier = Modifier.height(30.dp))
             }
         }
     }
