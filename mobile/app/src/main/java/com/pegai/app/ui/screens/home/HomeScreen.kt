@@ -1,13 +1,13 @@
 package com.pegai.app.ui.screens.home
 
 import android.Manifest
-import android.R
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -41,25 +41,19 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.model.Product
 import com.pegai.app.model.User
+import com.pegai.app.ui.navigation.Screen
 import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.viewmodel.home.HomeViewModel
 
-/**
- * Tela principal da aplicação.
- * Gerencia a exibição de produtos, categorias, busca e permissões de localização.
- */
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel(),
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    viewModel: HomeViewModel = viewModel()
 ) {
-    // Estados observados do ViewModel
-    val produtos by viewModel.produtos.collectAsState()
-    val produtosPopulares by viewModel.produtosPopulares.collectAsState()
+    // [MVVM] Estado Único
+    val uiState by viewModel.uiState.collectAsState()
     val usuarioLogado by authViewModel.usuarioLogado.collectAsState()
-    val localizacaoAtual by viewModel.enderecoAtual.collectAsState()
-    val categoriaSelecionada by viewModel.categoriaSelecionada.collectAsState()
-    val categorias = viewModel.categorias
 
     val context = LocalContext.current
 
@@ -69,7 +63,6 @@ fun HomeScreen(
     ) { permissoes ->
         val concedido = permissoes[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissoes[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-
         if (concedido) {
             viewModel.obterLocalizacaoAtual(context)
         }
@@ -77,15 +70,10 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         val temPermissaoFina = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val temPermissaoGrossa = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-        if (temPermissaoFina || temPermissaoGrossa) {
+        if (temPermissaoFina) {
             viewModel.obterLocalizacaoAtual(context)
         } else {
-            launcherPermissao.launch(arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ))
+            launcherPermissao.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
 
@@ -97,16 +85,17 @@ fun HomeScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
+        // HEADER
         HomeHeader(
             user = usuarioLogado,
-            localizacao = localizacaoAtual,
-            onLoginClick = { navController.navigate("login") },
-            onFavoritesClick = { navController.navigate("favorites") }
+            localizacao = uiState.localizacaoAtual,
+            onLoginClick = { navController.navigate(Screen.Login.route) },
+            onFavoritesClick = { /* TODO rota favoritos */ }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Grid principal rolavel
+        // GRID PRINCIPAL
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -116,40 +105,44 @@ fun HomeScreen(
         ) {
             // Barra de Pesquisa
             item(span = { GridItemSpan(2) }) {
-                SearchBar()
+                SearchBar(
+                    texto = uiState.textoPesquisa,
+                    onTextoChange = { viewModel.atualizarPesquisa(it) }
+                )
             }
 
             // Filtro de Categorias
             item(span = { GridItemSpan(2) }) {
                 CategoryRow(
-                    categorias = categorias,
-                    selecionada = categoriaSelecionada,
+                    categorias = uiState.categorias,
+                    selecionada = uiState.categoriaSelecionada,
                     onCategoriaClick = { viewModel.selecionarCategoria(it) }
                 )
             }
 
-            // Seção: Populares (Carrossel Horizontal)
-            item(span = { GridItemSpan(2) }) {
-                Column {
-                    Text(
-                        text = "Populares",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 2.dp)
-                    ) {
-                        items(produtosPopulares) { produto ->
-                            CompactProductCard(produto)
+            // Seção: Populares (Só aparece se tiver itens)
+            if (uiState.produtosPopulares.isNotEmpty() && uiState.textoPesquisa.isEmpty()) {
+                item(span = { GridItemSpan(2) }) {
+                    Column {
+                        Text(
+                            text = "Populares",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(bottom = 2.dp)
+                        ) {
+                            items(uiState.produtosPopulares) { produto ->
+                                CompactProductCard(produto)
+                            }
                         }
                     }
                 }
             }
 
-            // Seção: Para Você
+            // Seção: Lista Geral
             item(span = { GridItemSpan(2) }) {
                 Text(
                     text = "Para Você",
@@ -159,19 +152,64 @@ fun HomeScreen(
                 )
             }
 
-            // Lista de Produtos Grid
-            items(produtos) { produto ->
-                ProductCard(produto)
+            items(uiState.produtos) { produto ->
+                ProductCard(
+                    product = produto,
+                    onClick = {
+                        // Exemplo de navegação com ID
+                        // navController.navigate("product_details/${produto.id}")
+                    }
+                )
             }
         }
     }
 }
 
+// --- COMPONENTES AUXILIARES ---
+
+@Composable
+fun SearchBar(
+    texto: String,
+    onTextoChange: (String) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().height(50.dp).padding(bottom = 8.dp),
+        shape = RoundedCornerShape(50),
+        color = Color(0xFFFFFFFF),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                if (texto.isEmpty()) {
+                    Text("O que você procura?", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                }
+                BasicTextField(
+                    value = texto,
+                    onValueChange = onTextoChange,
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.Black, fontSize = 14.sp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
 // COMPONENTES AUXILIARES
 @Composable
-fun ProductCard(product: Product) {
+fun ProductCard(
+    product: Product,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
@@ -558,7 +596,6 @@ fun CategoryRow(
     selecionada: String,
     onCategoriaClick: (String) -> Unit
 ) {
-    // Nova cor principal definida (Azul Médio)
     val mainColor = Color(0xFF0E8FC6)
 
     LazyRow(
@@ -579,7 +616,7 @@ fun CategoryRow(
                 },
                 modifier = Modifier.height(32.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = mainColor, // USANDO A NOVA COR AQUI
+                    selectedContainerColor = mainColor,
                     selectedLabelColor = Color.White,
                     containerColor = Color(0xFFFFFFFF),
                     labelColor = Color.Gray
@@ -587,7 +624,7 @@ fun CategoryRow(
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = isSelected,
-                    borderColor = if (isSelected) mainColor else Color(0xFFEEEEEE), // E AQUI NA BORDA
+                    borderColor = if (isSelected) mainColor else Color(0xFFEEEEEE),
                     borderWidth = 1.dp
                 ),
                 shape = RoundedCornerShape(50)
