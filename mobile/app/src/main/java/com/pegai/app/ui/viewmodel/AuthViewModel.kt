@@ -17,4 +17,6 @@ class AuthViewModel: ViewModel() {
     fun setUsuarioLogado(user: User) {
         _usuarioLogado.value = user
     }
+
+
 }

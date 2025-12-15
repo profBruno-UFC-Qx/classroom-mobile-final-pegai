@@ -1,5 +1,6 @@
 package com.pegai.app.ui.screens.login
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,9 +21,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -34,27 +38,60 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pegai.app.R
 import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.viewmodel.login.LoginViewModel
 
 @Composable
 fun LoginScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
+    // Injeção do ViewModel
     viewModel: LoginViewModel = viewModel()
 ) {
+    // Observando o Estado (MVVM)
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
-    // Estados dos campos
+    // Estados locais (apenas para controle visual dos campos)
     var email by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
     var isFocusedUsuario by remember { mutableStateOf(false) }
     var isFocusedSenha by remember { mutableStateOf(false) }
+
+    // Validação visual
     val camposValidos = email.isNotBlank() && senha.isNotBlank()
+
+    // Reagindo a Mudanças de Estado (Sucesso ou Erro)
+    LaunchedEffect(uiState) {
+        if (uiState.erro != null) {
+            Toast.makeText(context, uiState.erro, Toast.LENGTH_LONG).show()
+        }
+
+        if (uiState.loginSucesso) {
+            // Passa o usuário logado para o AuthViewModel global
+            uiState.usuario?.let { authViewModel.setUsuarioLogado(it) }
+
+            navController.navigate("home") {
+                popUpTo("login") { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
 
     // ===== PALETA DE CORES =====
     val AzulPrincipal = Color(0xFF1CA3D9)
     val CinzaBorda = Color(0xFFD3D3D3)
     val CinzaTexto = Color(0xFF5A5A5A)
 
-    // ===== CONFIGURAÇÕES FIXAS =====
+    // ===== GRADIENTE PRINCIPAL =====
+    val mainGradient = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF0A5C8A), // Azul escuro
+            Color(0xFF0E8FC6), // Azul médio
+            Color(0xFF2ED1B2)  // Verde água
+        )
+    )
+
+    // ===== CONFIGURAÇÕES DE TAMANHO =====
     val larguraInputs = 280.dp
     val alturaComponente = 60.dp
     val tamanhoBotao = 52.dp
@@ -67,7 +104,7 @@ fun LoginScreen(
     ) {
 
         // ==============================================================
-        // 1. HEADER (COM SOMBRA E FUNDO BRANCO)
+        // 1. HEADER (CABEÇALHO)
         // ==============================================================
         Row(
             modifier = Modifier
@@ -109,7 +146,7 @@ fun LoginScreen(
         }
 
         // ==============================================================
-        // 2. ÁREA SUPERIOR — Logo + Ilustrações de Fundo
+        // 2. ÁREA SUPERIOR (LOGOS)
         // ==============================================================
         Box(
             modifier = Modifier
@@ -117,6 +154,7 @@ fun LoginScreen(
                 .padding(10.dp)
                 .background(Color.White)
         ) {
+            // Imagens de fundo decorativas
             Image(
                 painter = painterResource(id = R.drawable.ecosistema),
                 contentDescription = null,
@@ -138,7 +176,7 @@ fun LoginScreen(
                 modifier = Modifier.align(Alignment.BottomEnd).size(80.dp).alpha(0.2f)
             )
 
-            // Logo central
+            // Logo central e Título
             Column(
                 modifier = Modifier.align(Alignment.Center).padding(top = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -162,7 +200,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(1.dp))
 
         // ==============================================================
-        // 3. ÁREA DE FORMULÁRIO (COM SCROLL)
+        // 3. ÁREA DE FORMULÁRIO
         // ==============================================================
         Box(
             modifier = Modifier.fillMaxWidth().weight(1f)
@@ -175,16 +213,15 @@ fun LoginScreen(
                 alignment = Alignment.TopCenter
             )
 
-            // AQUI ESTÁ A CORREÇÃO: ADICIONADO .verticalScroll()
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // <--- Permite rolar quando o teclado sobe ou tela vira
-                    .padding(top = 160.dp, bottom = 20.dp), // Padding bottom para garantir espaço no fim do scroll
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 160.dp, bottom = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                // ===== INPUT DE USUÁRIO =====
+                // ===== INPUT DE USUÁRIO (EMAIL) =====
                 TextField(
                     value = email,
                     onValueChange = { email = it },
@@ -205,7 +242,7 @@ fun LoginScreen(
                         .onFocusChanged { isFocusedUsuario = it.isFocused }
                         .border(
                             width = 2.dp,
-                            color = if (isFocusedUsuario) AzulPrincipal else CinzaBorda,
+                            brush = if (isFocusedUsuario) mainGradient else SolidColor(CinzaBorda),
                             shape = RoundedCornerShape(20.dp)
                         )
                         .clip(RoundedCornerShape(20.dp)),
@@ -220,7 +257,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ===== INPUT SENHA + BOTÃO SETA DE LOGIN =====
+                // ===== INPUT SENHA + BOTÃO ENTRAR =====
                 Box(modifier = Modifier.width(larguraInputs)) {
 
                     TextField(
@@ -244,7 +281,7 @@ fun LoginScreen(
                             .onFocusChanged { isFocusedSenha = it.isFocused }
                             .border(
                                 width = 2.dp,
-                                color = if (isFocusedSenha) AzulPrincipal else CinzaBorda,
+                                brush = if (isFocusedSenha) mainGradient else SolidColor(CinzaBorda),
                                 shape = RoundedCornerShape(20.dp)
                             )
                             .clip(RoundedCornerShape(20.dp)),
@@ -257,35 +294,35 @@ fun LoginScreen(
                         )
                     )
 
-                    // Botão de entrar (seta)
+                    // === BOTÃO DE ENTRAR (SETA) ===
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .offset(x = tamanhoBotao + espacoEntreBotao)
                             .size(tamanhoBotao)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (camposValidos) AzulPrincipal else Color(0xFFE0E0E0))
-                            .clickable(enabled = camposValidos) {
-                                viewModel.login(
-                                    email,
-                                    senha,
-                                    onSucess = { user ->
-                                        authViewModel.setUsuarioLogado(user)
-                                        navController.navigate("home") {
-                                            popUpTo("login") { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                    },
-                                    onError = {}
-                                )
+                            .background(
+                                brush = if (camposValidos) mainGradient else SolidColor(Color(0xFFE0E0E0))
+                            )
+                            .clickable(enabled = camposValidos && !uiState.isLoading) {
+                                // Ação disparada aqui
+                                viewModel.login(email, senha)
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowForward,
-                            contentDescription = "Entrar",
-                            tint = if (camposValidos) Color.White else Color.Gray
-                        )
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = "Entrar",
+                                tint = if (camposValidos) Color.White else Color.Gray
+                            )
+                        }
                     }
                 }
 
@@ -296,29 +333,46 @@ fun LoginScreen(
                         fontSize = 12.sp,
                         color = CinzaTexto,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.CenterStart).clickable { }
+                        modifier = Modifier.align(Alignment.CenterStart).clickable {
+                            // Ação de esqueci senha aqui
+                        }
                     )
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // ===== BOTÃO CRIAR CONTA =====
+                // ===== BOTÃO CADASTRE-SE =====
                 Button(
                     onClick = {
                         navController.navigate("register")
                     },
-                    colors = ButtonDefaults.buttonColors(AzulPrincipal),
-                    modifier = Modifier.width(larguraInputs).height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    modifier = Modifier
+                        .width(larguraInputs)
+                        .height(48.dp),
                     shape = RoundedCornerShape(25.dp)
                 ) {
-                    Text(text = "Criar Conta", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(mainGradient),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Cadastre-se",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // ===== BOTÃO LOGIN COM GOOGLE =====
                 OutlinedButton(
-                    onClick = { },
+                    onClick = { /* Lógica do Google Aqui */ },
                     modifier = Modifier.width(larguraInputs).height(48.dp),
                     shape = RoundedCornerShape(25.dp),
                     border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
