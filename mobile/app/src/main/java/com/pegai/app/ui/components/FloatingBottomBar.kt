@@ -1,5 +1,6 @@
 package com.pegai.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.pegai.app.ui.navigation.Screen
 
 data class BottomNavItem(
     val label: String,
@@ -52,13 +54,13 @@ data class BottomNavItem(
 fun FloatingBottomBar(navController: NavController) {
 
     val leftItems = listOf(
-        BottomNavItem("Início", "home", Icons.Default.Home),
-        BottomNavItem("Aluguéis", "orders", Icons.Default.DateRange),
+        BottomNavItem("Início", Screen.Home.route, Icons.Default.Home),
+        BottomNavItem("Aluguéis", Screen.Orders.route, Icons.Default.DateRange),
     )
 
     val rightItems = listOf(
-        BottomNavItem("Chat", "chat", Icons.Default.Email),
-        BottomNavItem("Perfil", "profile", Icons.Default.Person),
+        BottomNavItem("Chat", Screen.Chat.route, Icons.Default.Email),
+        BottomNavItem("Perfil", Screen.Profile.route, Icons.Default.Person),
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -66,7 +68,18 @@ fun FloatingBottomBar(navController: NavController) {
 
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val totalHeight = 80.dp + navBarHeight
+
+    // Cor para os ícones selecionados
     val mainColor = Color(0xFF0E8FC6)
+
+    // Definição do Degradê
+    val buttonGradient = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF0A5C8A), // Azul escuro
+            Color(0xFF0E8FC6), // Azul médio
+            Color(0xFF2ED1B2)  // Verde água
+        )
+    )
 
     Box(
         modifier = Modifier
@@ -124,23 +137,28 @@ fun FloatingBottomBar(navController: NavController) {
             }
         }
 
-        // Floating Action Button
+        // Floating Action Button com Degradê
         Surface(
             modifier = Modifier
                 .size(64.dp)
                 .offset(y = 5.dp),
             shadowElevation = 2.dp,
             shape = CircleShape,
-            color = mainColor,
+            color = Color.Transparent,
             onClick = {
-                navController.navigate("add") {
+                navController.navigate(Screen.Add.route) {
                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
                 }
             }
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(buttonGradient),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Anunciar",

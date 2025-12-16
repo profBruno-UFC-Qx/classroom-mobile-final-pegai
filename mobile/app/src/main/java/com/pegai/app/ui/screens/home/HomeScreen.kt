@@ -156,8 +156,7 @@ fun HomeScreen(
                 ProductCard(
                     product = produto,
                     onClick = {
-                        // Exemplo de navegação com ID
-                        // navController.navigate("product_details/${produto.id}")
+                         navController.navigate("product_details/${produto.pid}")
                     }
                 )
             }
@@ -299,7 +298,7 @@ fun ProductCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Dono: ${product.dono}",
+                    text = "Dono: ${product.donoNome}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

@@ -1,21 +1,25 @@
 package com.pegai.app.model
 
-/**
- * Representa um item ou material acadêmico disponível para aluguel no Pegaí.
- */
 data class Product(
-    val id: String,
-    val titulo: String,
-    val descricao: String,
-    val preco: Double,
+    val pid: String = "",
+    val titulo: String = "",
+    val descricao: String = "",
+    val preco: Double = 0.0,
+    val categoria: String = "",
 
-    // ID ou referência ao usuário proprietário do item
-    val dono: String,
+    // Mantemos imageUrl como a "Capa" para a Home não quebrar
+    val imageUrl: String = "",
 
-    /**
-     * Avaliação média do item (escala de 0.0 a 5.0).
-     * O valor padrão é 5.0 para novos itens.
-     */
+    // NOVA LISTA: Para o carrossel de detalhes
+    val imagens: List<String> = emptyList(),
+
+    // ID do dono (fundamental para abrir o perfil dele)
+    val donoId: String = "",
+    val donoNome: String = "", // Guardamos o nome aqui para facilitar (desnormalização)
+
     val nota: Double = 5.0,
-    val imageUrl: String
+
+    // Opcional: Lista de reviews simples embutida
+    // (Para um app maior, isso seria uma sub-coleção no Firebase)
+    val totalAvaliacoes: Int = 0
 )

@@ -129,11 +129,52 @@ class HomeViewModel : ViewModel() {
     // --- MOCK DATA ---
     private fun gerarDadosFalsos(): List<Product> {
         return listOf(
-            Product("1", "Calculadora HP 12c", "Usada, em bom estado", 5.0, "Eletrônicos", "Maria", nota = 5.0, "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw"),
-            Product("2", "Jaleco Quixadá", "Tamanho M, bordado UFC", 15.0, "Jalecos", "João", 4.5,"https://photos.enjoei.com.br/jaleco-branco-81336648/800x800/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy8xMzQ3Mzc3NC82MmY4Nzc0OGU2YTQwNzVkM2Q3OGNhMjFkZDZhY2NkNS5qcGc"),
-            Product("3", "Kit Arduino", "Completo com sensores", 20.0, "Eletrônicos", "Toinha", 3.9,"https://cdn.awsli.com.br/78/78150/produto/338952433/kit_arduino_uno_smd_starter_com_caixa_organizadora-3xak1vrhvm.png"),
-            Product("4", "Livro Cormen", "A bíblia da computação", 10.0, "Livros", "Adrian", 4.6,"https://img.olx.com.br/images/87/874568196905386.jpg"),
-            Product("5", "Câmera Canon Antiga", "Para amantes de fotografia", 35.0, "Eletrônicos", "Helder", 3.5,"https://d1o6h00a1h5k7q.cloudfront.net/imagens/img_m/28309/13751831.jpg")
+            // PRODUTO 1
+            Product(
+                pid = "1",
+                titulo = "Calculadora HP 12c",
+                descricao = "Calculadora usada, perfeita para contabilidade.",
+                preco = 15.0,
+                categoria = "Calculadoras",
+                imageUrl = "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw",
+                // Novos campos nomeados:
+                donoId = "user_mock_1",
+                donoNome = "Maria",
+                nota = 4.8,
+                totalAvaliacoes = 12,
+                imagens = listOf(
+                    "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw",
+                    "https://http2.mlstatic.com/D_NQ_NP_787622-MLB48827768466_012022-O.webp"
+                )
+            ),
+
+            // PRODUTO 2 (O que estava dando erro)
+            Product(
+                pid = "2",
+                titulo = "Jaleco Quixadá",
+                descricao = "Tamanho M. Pouco uso.",
+                preco = 35.0,
+                categoria = "Jalecos",
+                imageUrl = "https://photos.enjoei.com.br/jaleco-branco-81336648/800x800/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy8xMzQ3Mzc3NC82MmY4Nzc0OGU2YTQwNzVkM2Q3OGNhMjFkZDZhY2NkNS5qcGc",
+                // Corrigido aqui:
+                donoId = "user_2",
+                donoNome = "João",
+                nota = 5.0,
+                totalAvaliacoes = 3
+            ),
+
+            // PRODUTO 3
+            Product(
+                pid = "3",
+                titulo = "Kit Arduino",
+                descricao = "Kit completo para iniciantes.",
+                preco = 20.0,
+                categoria = "Eletrônicos",
+                imageUrl = "https://cdn.awsli.com.br/78/78150/produto/338952433/kit_arduino_uno_smd_starter_com_caixa_organizadora-3xak1vrhvm.png",
+                donoId = "user_3",
+                donoNome = "Pedro",
+                nota = 4.5
+            )
         )
     }
 }
