@@ -8,5 +8,8 @@ data class ProfileUiState(
 
     // Feedback
     val isLoading: Boolean = false,
-    val erro: String? = null
+    val erro: String? = null,
+    val avaliacao: String = "",
+    val alugueis: String= "",
+    val anuncios: String= ""
 )

@@ -1,6 +1,7 @@
 package com.pegai.app.ui.viewmodel.home
 
 import com.pegai.app.model.Product
+import com.pegai.app.model.User
 
 data class HomeUiState(
     // Dados da UI
@@ -15,5 +16,5 @@ data class HomeUiState(
     // Estados de Hardware/Sistema
     val localizacaoAtual: String = "Localização desconhecida",
     val isLoading: Boolean = false,
-    val erro: String? = null
+    val erro: String? = null,
 )

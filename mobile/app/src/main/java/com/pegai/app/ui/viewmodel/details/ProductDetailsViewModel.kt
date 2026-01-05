@@ -1,12 +1,21 @@
 package com.pegai.app.ui.viewmodel.details
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.pegai.app.data.data.repository.ProductRepository
+import com.pegai.app.data.data.repository.UserRepository
+import com.pegai.app.data.data.utils.formatarTempo
+import com.pegai.app.model.Avaliacao
 import com.pegai.app.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.concurrent.TimeUnit
 
 class ProductDetailsViewModel : ViewModel() {
 
@@ -14,6 +23,31 @@ class ProductDetailsViewModel : ViewModel() {
     val uiState: StateFlow<ProductDetailsUiState> = _uiState.asStateFlow()
 
     private val auth = FirebaseAuth.getInstance()
+
+    suspend fun carregarAvaliacoesDoProduto(produtoId: String): List<Avaliacao> {
+        val snapshot = FirebaseFirestore.getInstance()
+            .collection("avaliacao")
+            .whereEqualTo("produtoId", produtoId)
+            .get()
+            .await()
+
+        return snapshot.toObjects(Avaliacao::class.java)
+    }
+
+
+
+    suspend fun carregarReviewsUI(produtoId: String): List<ReviewUI> {
+        val avaliacoes = carregarAvaliacoesDoProduto(produtoId)
+
+        return avaliacoes.map { avaliacao ->
+            ReviewUI(
+                authorName = UserRepository.getNomeUsuario(avaliacao.usuarioId),
+                comment = avaliacao.descricao,
+                rating = avaliacao.nota,
+                date = formatarTempo(avaliacao.data)
+            )
+        }
+    }
 
     fun carregarDetalhes(productId: String?) {
         _uiState.update { it.copy(isLoading = true) }
@@ -23,43 +57,31 @@ class ProductDetailsViewModel : ViewModel() {
             return
         }
 
-        // Busca o produto REAL (Simulado)
-        val produtoReal = encontrarProdutoMock(productId)
+        viewModelScope.launch {
+            val produto = ProductRepository.getProdutoPorId(productId)
 
-        if (produtoReal != null) {
-            val meuId = auth.currentUser?.uid
-            val isDono = false // Mock temporário
-
-            //  Prepara imagens (Se a lista do produto for vazia, usa a capa)
-            val imagensParaExibir = if (produtoReal.imagens.isNotEmpty()) {
-                produtoReal.imagens
-            } else {
-                listOf(produtoReal.imageUrl)
+            if (produto == null) {
+                _uiState.update { it.copy(isLoading = false, erro = "Produto indisponível") }
+                return@launch
             }
 
-            // Prepara Reviews
-            val reviewsMock = listOf(
-                ReviewUI("Gabriel S.", "Muito precisa!", 5, "1 semana atrás"),
-                ReviewUI("Julia M.", "Entregue em perfeito estado.", 5, "2 meses atrás"),
-                ReviewUI("Lucas F.", "Excelente para a prova.", 4, "3 meses atrás")
-            )
+            val reviews = carregarReviewsUI(productId)
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    produto = produtoReal,
-                    imagensCarrossel = imagensParaExibir,
-                    nomeDono = produtoReal.donoNome,
-                    fotoDono = "",
-                    avaliacoesCount = 15,
-                    reviews = reviewsMock, // Passando a lista para a tela
-                    isDonoDoAnuncio = isDono
+                    produto = produto,
+                    imagensCarrossel = if (produto.imagens.isNotEmpty())
+                        produto.imagens else listOf(produto.imageUrl),
+                    nomeDono = produto.donoNome,
+                    avaliacoesCount = reviews.size,
+                    reviews = reviews,
+                    isDonoDoAnuncio = produto.donoId == auth.currentUser?.uid
                 )
             }
-        } else {
-            _uiState.update { it.copy(isLoading = false, erro = "Produto indisponível.") }
         }
     }
+
 
     private fun encontrarProdutoMock(id: String): Product? {
         val lista = listOf(

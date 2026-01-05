@@ -289,7 +289,7 @@ fun ProductCard(
                         color = Color.Black
                     )
                     Text(
-                        text = " (201)",
+                        text = "("+product.totalAvaliacoes.toString()+")",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )

@@ -50,8 +50,8 @@ fun PublicProfileScreen(
     val fotoUrl = if (!user?.fotoUrl.isNullOrEmpty()) user!!.fotoUrl else "https://via.placeholder.com/150"
 
     // Dados fixos de visual (podem vir do banco depois)
-    val notaGeral = 4.9
-    val totalAvaliacoes = 28
+    val notaGeral = uiState.nota
+    val totalAvaliacoes = uiState.totalAvaliacao
 
     // Lógica inteligente: Se tiver produtos reais, mostra eles. Se não, mostra sugestões (mock)
     val listaProdutosExibicao = if (uiState.produtos.isNotEmpty()) {

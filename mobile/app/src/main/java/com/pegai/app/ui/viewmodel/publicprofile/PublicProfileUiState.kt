@@ -7,10 +7,10 @@ data class PublicProfileUiState(
     val isLoading: Boolean = true,
     val user: User? = null,
     val produtos: List<Product> = emptyList(),
-
-    // NOVOS CAMPOS PARA O MVVM PURO:
-    val reviews: List<ReviewMock> = emptyList(), // A lista vem daqui agora
-    val produtosSugeridos: List<ProdutoMock> = emptyList(), // E daqui
+    val reviews: List<ReviewMock> = emptyList(),
+    val produtosSugeridos: List<ProdutoMock> = emptyList(),
+    val nota: Number = 0.0,
+    val totalAvaliacao: Number = 0.0,
 
     val erro: String? = null
 )

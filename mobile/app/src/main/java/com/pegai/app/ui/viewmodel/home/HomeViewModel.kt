@@ -3,15 +3,20 @@ package com.pegai.app.ui.viewmodel.home
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.toObject
+import com.pegai.app.data.data.repository.ProductRepository
 import com.pegai.app.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
 class HomeViewModel : ViewModel() {
@@ -19,6 +24,8 @@ class HomeViewModel : ViewModel() {
     // Estado Único da Tela
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     // Lista "mestra" para filtros locais (evita requery no banco)
     private var todosProdutosCache: List<Product> = emptyList()
@@ -41,22 +48,38 @@ class HomeViewModel : ViewModel() {
 
     // --- LÓGICA DE DADOS ---
 
-    private fun carregarDadosIniciais() {
+    fun carregarDadosIniciais() {
         _uiState.update { it.copy(isLoading = true) }
 
-        // Simulação de busca no Backend
-        val dadosCarregados = gerarDadosFalsos()
-        todosProdutosCache = dadosCarregados
+        viewModelScope.launch {
+            try {
+                val dadosCarregados = carregarProdutosCompletos()
+                todosProdutosCache = dadosCarregados
+                ProductRepository.salvarNoCache(dadosCarregados)
 
-        // Atualiza o estado
-        _uiState.update {
-            it.copy(
-                isLoading = false,
-                produtos = dadosCarregados, // Inicialmente mostra tudo
-                produtosPopulares = dadosCarregados.filter { p -> p.nota >= 4.7 }
-            )
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        produtos = dadosCarregados,
+                        produtosPopulares = dadosCarregados.filter { p -> p.nota >= 4.5 }
+                    )
+                }
+                println(dadosCarregados)
+
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        erro = "Erro ao carregar produtos"
+
+                    )
+                }
+                Log.e("Firestore", "Erro ao carregar produtos", e)
+
+            }
         }
     }
+
 
     private fun aplicarFiltros() {
         val estadoAtual = _uiState.value
@@ -177,4 +200,58 @@ class HomeViewModel : ViewModel() {
             )
         )
     }
+
+    suspend fun carregarProdutosCompletos(): List<Product> {
+        val produtosBase = carregarProdutosBase()
+
+        return produtosBase.map { produto ->
+
+            val donoNome = carregarNomeDono(produto.donoId)
+            val (notaMedia, totalAvaliacoes) = calcularAvaliacoes(produto.pid)
+
+            produto.copy(
+                donoNome = donoNome,
+                nota = notaMedia,
+                totalAvaliacoes = totalAvaliacoes
+            )
+        }
+    }
+
+    suspend fun carregarProdutosBase(): List<Product> {
+        val snapshot = db.collection("products").get().await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject<Product>()?.copy(pid = doc.id)
+        }
+    }
+
+    suspend fun carregarNomeDono(donoId: String): String {
+        val doc = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(donoId)
+            .get()
+            .await()
+
+        return doc.getString("nome") ?: "Usuário"
+    }
+
+    suspend fun calcularAvaliacoes(produtoId: String): Pair<Double, Int> {
+        val snapshot = FirebaseFirestore.getInstance()
+            .collection("avaliacao")
+            .whereEqualTo("produtoId", produtoId)
+            .get()
+            .await()
+
+        if (snapshot.isEmpty) return Pair(5.0, 0)
+
+        val notas = snapshot.documents.mapNotNull {
+            it.getDouble("nota")
+        }
+
+        val media = notas.average()
+        val total = notas.size
+
+        return Pair(media, total)
+    }
+
 }
