@@ -124,7 +124,7 @@ fun ProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        painter = painterResource(id = R.drawable.google),
+                                        painter = painterResource(id = R.drawable.ic_qrcode_pix),
                                         contentDescription = "Pix",
                                         tint = Color.White,
                                         modifier = Modifier.size(24.dp)
