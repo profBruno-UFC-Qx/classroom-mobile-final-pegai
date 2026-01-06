@@ -32,7 +32,7 @@ import com.pegai.app.ui.screens.register.RegisterScreen
 import com.pegai.app.ui.theme.PegaíTheme
 import com.pegai.app.ui.screens.details.ProductDetailsScreen
 import com.pegai.app.ui.screens.chat.ChatDetailScreen
-import com.pegai.app.ui.screens.publicprofile.PublicProfileScreen
+import com.pegai.app.ui.screens.profile.PublicProfileScreen
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

@@ -1,12 +1,15 @@
 package com.pegai.app.data.data.utils
 
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-fun formatarTempo(timestamp: com.google.firebase.Timestamp?): String {
+fun formatarTempo(timestamp: Timestamp?): String {
     if (timestamp == null) return ""
 
     val diff = System.currentTimeMillis() - timestamp.toDate().time
-
     val dias = TimeUnit.MILLISECONDS.toDays(diff)
 
     return when {
@@ -17,4 +20,3 @@ fun formatarTempo(timestamp: com.google.firebase.Timestamp?): String {
         else -> "${dias / 365} anos atrás"
     }
 }
-

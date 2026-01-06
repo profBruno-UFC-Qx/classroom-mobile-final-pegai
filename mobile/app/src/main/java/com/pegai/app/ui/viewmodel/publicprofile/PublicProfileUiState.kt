@@ -2,19 +2,19 @@ package com.pegai.app.ui.viewmodel.publicprofile
 
 import com.pegai.app.model.Product
 import com.pegai.app.model.User
+import com.pegai.app.model.UserAvaliacao
 
 data class PublicProfileUiState(
     val isLoading: Boolean = true,
+
+    // O usuário dono do perfil (já contém as notas: user.notaLocador e user.notaLocatario)
     val user: User? = null,
+
+    // Lista real de produtos que esse usuário está anunciando
     val produtos: List<Product> = emptyList(),
-    val reviews: List<ReviewMock> = emptyList(),
-    val produtosSugeridos: List<ProdutoMock> = emptyList(),
-    val nota: Number = 0.0,
-    val totalAvaliacao: Number = 0.0,
+
+    // Lista real de comentários/avaliações que ele recebeu
+    val avaliacoes: List<UserAvaliacao> = emptyList(),
 
     val erro: String? = null
 )
-
-// Classes movidas da tela para cá
-data class ReviewMock(val nome: String, val comentario: String, val nota: Int, val data: String)
-data class ProdutoMock(val nome: String, val preco: String, val imagem: String)
