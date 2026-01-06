@@ -10,6 +10,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.toObject
 import com.pegai.app.data.data.repository.ProductRepository
+import com.pegai.app.model.Category // Import da Enum de Categorias
 import com.pegai.app.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,14 +28,17 @@ class HomeViewModel : ViewModel() {
 
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
-    // Lista "mestra" para filtros locais (evita requery no banco)
+    // Lista "mestra" para filtros locais
     private var todosProdutosCache: List<Product> = emptyList()
+
+    // --- LISTA DE CATEGORIAS PARA O CARROSSEL DA HOME ---
+    val categoriasFiltro = listOf("Todos") + Category.entries.map { it.nomeExibicao }
 
     init {
         carregarDadosIniciais()
     }
 
-    // --- AÇÕES DE UI (Intent) ---
+    // --- AÇÕES DE UI ---
 
     fun selecionarCategoria(categoria: String) {
         _uiState.update { it.copy(categoriaSelecionada = categoria) }
@@ -53,7 +57,9 @@ class HomeViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // AGORA É 100% REAL: Carrega do Firebase. Se vier vazio, a tela fica vazia.
                 val dadosCarregados = carregarProdutosCompletos()
+
                 todosProdutosCache = dadosCarregados
                 ProductRepository.salvarNoCache(dadosCarregados)
 
@@ -61,25 +67,22 @@ class HomeViewModel : ViewModel() {
                     it.copy(
                         isLoading = false,
                         produtos = dadosCarregados,
+                        // Populares: Nota alta (> 4.5)
                         produtosPopulares = dadosCarregados.filter { p -> p.nota >= 4.5 }
                     )
                 }
-                println(dadosCarregados)
+
+                // Log para depuração
+                Log.d("HomeViewModel", "Produtos carregados: ${dadosCarregados.size}")
 
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        erro = "Erro ao carregar produtos"
-
-                    )
+                    it.copy(isLoading = false, erro = "Erro ao carregar produtos")
                 }
-                Log.e("Firestore", "Erro ao carregar produtos", e)
-
+                Log.e("Firestore", "Erro crítico ao carregar produtos", e)
             }
         }
     }
-
 
     private fun aplicarFiltros() {
         val estadoAtual = _uiState.value
@@ -87,25 +90,24 @@ class HomeViewModel : ViewModel() {
         val cat = estadoAtual.categoriaSelecionada
 
         val listaFiltrada = todosProdutosCache.filter { produto ->
-            // Filtro de Categoria
+            // 1. Filtro de Categoria
             val matchCategoria = if (cat == "Todos") {
                 true
             } else {
                 produto.categoria.equals(cat, ignoreCase = true)
             }
 
-            // Filtro de Texto (Título ou Descrição)
+            // 2. Filtro de Texto (Título ou Descrição)
             val matchTexto = produto.titulo.lowercase().contains(termo) ||
                     produto.descricao.lowercase().contains(termo)
 
-            // Só passa se atender aos DOIS critérios
             matchCategoria && matchTexto
         }
 
         _uiState.update { it.copy(produtos = listaFiltrada) }
     }
 
-    // --- LÓGICA DE LOCALIZAÇÃO  ---
+    // --- LÓGICA DE LOCALIZAÇÃO ---
 
     @SuppressLint("MissingPermission")
     fun obterLocalizacaoAtual(context: Context) {
@@ -145,67 +147,17 @@ class HomeViewModel : ViewModel() {
                 _uiState.update { it.copy(localizacaoAtual = texto) }
             }
         } catch (e: Exception) {
-            // Ignora erro de geocoder de forma sileciosa
+            // Ignora silenciosamente
         }
     }
 
-    // --- MOCK DATA ---
-    private fun gerarDadosFalsos(): List<Product> {
-        return listOf(
-            // PRODUTO 1
-            Product(
-                pid = "1",
-                titulo = "Calculadora HP 12c",
-                descricao = "Calculadora usada, perfeita para contabilidade.",
-                preco = 15.0,
-                categoria = "Calculadoras",
-                imageUrl = "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw",
-                // Novos campos nomeados:
-                donoId = "user_mock_1",
-                donoNome = "Maria",
-                nota = 4.8,
-                totalAvaliacoes = 12,
-                imagens = listOf(
-                    "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw",
-                    "https://http2.mlstatic.com/D_NQ_NP_787622-MLB48827768466_012022-O.webp"
-                )
-            ),
-
-            // PRODUTO 2 (O que estava dando erro)
-            Product(
-                pid = "2",
-                titulo = "Jaleco Quixadá",
-                descricao = "Tamanho M. Pouco uso.",
-                preco = 35.0,
-                categoria = "Jalecos",
-                imageUrl = "https://photos.enjoei.com.br/jaleco-branco-81336648/800x800/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy8xMzQ3Mzc3NC82MmY4Nzc0OGU2YTQwNzVkM2Q3OGNhMjFkZDZhY2NkNS5qcGc",
-                // Corrigido aqui:
-                donoId = "user_2",
-                donoNome = "João",
-                nota = 5.0,
-                totalAvaliacoes = 3
-            ),
-
-            // PRODUTO 3
-            Product(
-                pid = "3",
-                titulo = "Kit Arduino",
-                descricao = "Kit completo para iniciantes.",
-                preco = 20.0,
-                categoria = "Eletrônicos",
-                imageUrl = "https://cdn.awsli.com.br/78/78150/produto/338952433/kit_arduino_uno_smd_starter_com_caixa_organizadora-3xak1vrhvm.png",
-                donoId = "user_3",
-                donoNome = "Pedro",
-                nota = 4.5
-            )
-        )
-    }
+    // --- MÉTODOS AUXILIARES DE BUSCA NO FIREBASE ---
 
     suspend fun carregarProdutosCompletos(): List<Product> {
         val produtosBase = carregarProdutosBase()
 
         return produtosBase.map { produto ->
-
+            // Enriquece o produto com nome do dono e avaliações
             val donoNome = carregarNomeDono(produto.donoId)
             val (notaMedia, totalAvaliacoes) = calcularAvaliacoes(produto.pid)
 
@@ -219,39 +171,37 @@ class HomeViewModel : ViewModel() {
 
     suspend fun carregarProdutosBase(): List<Product> {
         val snapshot = db.collection("products").get().await()
-
         return snapshot.documents.mapNotNull { doc ->
+            // Importante: garante que o ID do documento vá para o objeto
             doc.toObject<Product>()?.copy(pid = doc.id)
         }
     }
 
     suspend fun carregarNomeDono(donoId: String): String {
-        val doc = FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(donoId)
-            .get()
-            .await()
-
-        return doc.getString("nome") ?: "Usuário"
+        try {
+            if (donoId.isBlank()) return "Usuário"
+            val doc = db.collection("users").document(donoId).get().await()
+            return doc.getString("nome") ?: "Usuário"
+        } catch (e: Exception) {
+            return "Usuário"
+        }
     }
 
     suspend fun calcularAvaliacoes(produtoId: String): Pair<Double, Int> {
-        val snapshot = FirebaseFirestore.getInstance()
-            .collection("avaliacao")
-            .whereEqualTo("produtoId", produtoId)
-            .get()
-            .await()
+        try {
+            val snapshot = db.collection("avaliacao")
+                .whereEqualTo("produtoId", produtoId)
+                .get()
+                .await()
 
-        if (snapshot.isEmpty) return Pair(5.0, 0)
+            if (snapshot.isEmpty) return Pair(5.0, 0)
 
-        val notas = snapshot.documents.mapNotNull {
-            it.getDouble("nota")
+            val notas = snapshot.documents.mapNotNull { it.getDouble("nota") }
+            val media = if (notas.isNotEmpty()) notas.average() else 0.0
+
+            return Pair(media, notas.size)
+        } catch (e: Exception) {
+            return Pair(0.0, 0)
         }
-
-        val media = notas.average()
-        val total = notas.size
-
-        return Pair(media, total)
     }
-
 }

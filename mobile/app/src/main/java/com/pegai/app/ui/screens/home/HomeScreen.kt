@@ -39,11 +39,16 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.pegai.app.model.Category
 import com.pegai.app.model.Product
 import com.pegai.app.model.User
 import com.pegai.app.ui.navigation.Screen
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.home.HomeViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 
 @Composable
 fun HomeScreen(
@@ -114,7 +119,7 @@ fun HomeScreen(
             // Filtro de Categorias
             item(span = { GridItemSpan(2) }) {
                 CategoryRow(
-                    categorias = uiState.categorias,
+                    categorias = viewModel.categoriasFiltro,
                     selecionada = uiState.categoriaSelecionada,
                     onCategoriaClick = { viewModel.selecionarCategoria(it) }
                 )
@@ -156,7 +161,7 @@ fun HomeScreen(
                 ProductCard(
                     product = produto,
                     onClick = {
-                         navController.navigate("product_details/${produto.pid}")
+                        navController.navigate("product_details/${produto.pid}")
                     }
                 )
             }
@@ -538,58 +543,6 @@ fun HomeHeader(
 }
 
 @Composable
-fun SearchBar() {
-    val textoPesquisa by remember { mutableStateOf("") }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .padding(bottom = 8.dp),
-        shape = RoundedCornerShape(50),
-        color = Color(0xFFFFFFFF),
-        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
-        shadowElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(20.dp)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Box(modifier = Modifier.weight(1f)) {
-                if (textoPesquisa.isEmpty()) {
-                    Text(
-                        text = "O que você procura?",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
-                BasicTextField(
-                    value = textoPesquisa,
-                    onValueChange = { /* TODO: Atualizar estado */ },
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        color = Color.Black,
-                        fontSize = 14.sp
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun CategoryRow(
     categorias: List<String>,
     selecionada: String,
@@ -601,15 +554,28 @@ fun CategoryRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(bottom = 24.dp)
     ) {
-        items(categorias) { categoria ->
-            val isSelected = categoria == selecionada
+        items(categorias) { categoriaNome ->
+            val isSelected = categoriaNome == selecionada
+            val icon = if (categoriaNome == "Todos") {
+                Icons.Default.FilterList
+            } else {
+                Category.fromNome(categoriaNome).icon
+            }
 
             FilterChip(
                 selected = isSelected,
-                onClick = { onCategoriaClick(categoria) },
+                onClick = { onCategoriaClick(categoriaNome) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isSelected) Color.White else mainColor
+                    )
+                },
                 label = {
                     Text(
-                        text = categoria,
+                        text = categoriaNome,
                         style = MaterialTheme.typography.labelMedium
                     )
                 },

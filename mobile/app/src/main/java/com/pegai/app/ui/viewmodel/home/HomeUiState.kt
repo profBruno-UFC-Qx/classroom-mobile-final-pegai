@@ -1,20 +1,21 @@
 package com.pegai.app.ui.viewmodel.home
 
 import com.pegai.app.model.Product
-import com.pegai.app.model.User
 
 data class HomeUiState(
-    // Dados da UI
+    val isLoading: Boolean = false,
+
+    // Listas de Produtos (Dados dinâmicos)
     val produtos: List<Product> = emptyList(),
     val produtosPopulares: List<Product> = emptyList(),
-    val categorias: List<String> = listOf("Todos", "Livros", "Calculadoras", "Jalecos", "Eletrônicos", "Outros"),
+
+    // OBS: Removemos 'categorias' daqui pois agora ela vem do ViewModel (Category.entries)
 
     // Estados de Seleção/Filtro
     val categoriaSelecionada: String = "Todos",
     val textoPesquisa: String = "",
 
-    // Estados de Hardware/Sistema
-    val localizacaoAtual: String = "Localização desconhecida",
-    val isLoading: Boolean = false,
-    val erro: String? = null,
+    // Estados de Sistema
+    val localizacaoAtual: String = "Buscando localização...",
+    val erro: String? = null
 )
