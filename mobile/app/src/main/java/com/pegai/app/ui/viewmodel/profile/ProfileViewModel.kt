@@ -1,6 +1,7 @@
 package com.pegai.app.ui.viewmodel.profile
 
 import androidx.lifecycle.ViewModel
+import com.pegai.app.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,10 +12,20 @@ class ProfileViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    // --- AÇÕES DE UI ---
+    // -------- USUÁRIO --------
+
+    fun setUsuario(usuario: User?) {
+        _uiState.update {
+            it.copy(
+                user = usuario,
+                chavePix = usuario?.chavePix ?: ""
+            )
+        }
+    }
+
+    // -------- PIX --------
 
     fun abrirPixDialog() {
-        // Ao abrir, copiamos a chave atual para a temporária
         _uiState.update {
             it.copy(
                 isPixDialogVisible = true,
@@ -24,20 +35,24 @@ class ProfileViewModel : ViewModel() {
     }
 
     fun fecharPixDialog() {
-        _uiState.update { it.copy(isPixDialogVisible = false) }
+        _uiState.update {
+            it.copy(isPixDialogVisible = false)
+        }
     }
 
     fun atualizarChaveTemp(novaChave: String) {
-        _uiState.update { it.copy(chavePixTemp = novaChave) }
+        _uiState.update {
+            it.copy(chavePixTemp = novaChave)
+        }
     }
 
     fun salvarChavePix() {
-        // TODO: Aqui entra a chamada ao Firestore para salvar de verdade
         val novaChave = _uiState.value.chavePixTemp
 
+        // TODO: salvar no Firestore
         _uiState.update {
             it.copy(
-                chavePix = novaChave, // Confirma a alteração
+                chavePix = novaChave,
                 isPixDialogVisible = false
             )
         }

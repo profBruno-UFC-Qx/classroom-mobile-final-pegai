@@ -28,18 +28,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.R
 import com.pegai.app.ui.components.GuestPlaceholder
 import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.viewmodel.home.HomeViewModel
+import com.pegai.app.ui.viewmodel.profile.ProfileViewModel
 
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    viewModel: ProfileViewModel = viewModel()
 ) {
-    val user by authViewModel.usuarioLogado.collectAsState()
+    val authUser by authViewModel.usuarioLogado.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     // --- ESTADOS ---
     var showPixManagerDialog by remember { mutableStateOf(false) }
@@ -55,7 +60,11 @@ fun ProfileScreen(
         )
     )
 
-    if (user == null) {
+    LaunchedEffect(authUser) {
+        viewModel.setUsuario(authUser)
+    }
+
+    if (uiState.user == null){
         GuestPlaceholder(
             title = "Acesse seu Perfil",
             subtitle = "Faça login para gerenciar seus dados.",
@@ -153,9 +162,9 @@ fun ProfileScreen(
                                             .padding(3.dp)
                                             .clip(CircleShape)
                                     ) {
-                                        if (user?.fotoUrl != null && user?.fotoUrl!!.isNotEmpty()) {
+                                        if (uiState.user?.fotoUrl != null && uiState.user?.fotoUrl!!.isNotEmpty()) {
                                             AsyncImage(
-                                                model = user?.fotoUrl,
+                                                model = uiState.user?.fotoUrl,
                                                 contentDescription = "Foto",
                                                 contentScale = ContentScale.Crop,
                                                 modifier = Modifier.fillMaxSize()
@@ -168,7 +177,7 @@ fun ProfileScreen(
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
-                                                    text = user?.nome?.first()?.toString() ?: "U",
+                                                    text = uiState.user?.nome?.first()?.toString() ?: "U",
                                                     fontSize = 40.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color(0xFF0E8FC6)
@@ -238,14 +247,14 @@ fun ProfileScreen(
 
                         // Nome e Email
                         Text(
-                            text = user?.nome ?: "Usuário",
+                            text = uiState.user?.nome ?: "Usuário",
                             color = Color.White,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            text = user?.email ?: "",
+                            text = uiState.user?.email ?: "",
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 14.sp
                         )
