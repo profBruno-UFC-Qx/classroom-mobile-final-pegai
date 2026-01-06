@@ -1,15 +1,21 @@
 package com.pegai.app.ui.viewmodel.profile
 
+import com.pegai.app.model.User
+
 data class ProfileUiState(
+    val user: User? = null,
+
     // Controle do Popup do Pix
     val isPixDialogVisible: Boolean = false,
     val chavePix: String = "",
-    val chavePixTemp: String = "", // O que o usuário está digitando antes de salvar
+    val chavePixTemp: String = "",
 
     // Feedback
     val isLoading: Boolean = false,
     val erro: String? = null,
-    val avaliacao: String = "",
-    val alugueis: String= "",
-    val anuncios: String= ""
+
+    // Status
+    val avaliacao: String = "4.9 ★",
+    val alugueis: String = "0",
+    val anuncios: String = "0"
 )
