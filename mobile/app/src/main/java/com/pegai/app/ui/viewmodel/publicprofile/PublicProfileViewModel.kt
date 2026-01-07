@@ -21,13 +21,9 @@ class PublicProfileViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // 1. Busca dados do usuário (Nome, Foto, Notas Locador/Locatário)
                 val usuario = UserRepository.getUsuarioPorId(userId)
-
-                // 2. Busca a lista real de avaliações do banco
                 val listaAvaliacoes = UserRepository.getTodasAvaliacoes(userId)
 
-                // 3. Atualiza a tela com dados REAIS (sem Mocks)
                 _uiState.update {
                     it.copy(
                         isLoading = false,

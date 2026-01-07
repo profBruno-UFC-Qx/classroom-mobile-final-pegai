@@ -53,8 +53,12 @@ class MainActivity : ComponentActivity() {
             isReady = true
         }
 
+        // --- CONFIGURAÇÃO DA BARRA DE STATUS (EDGE-TO-EDGE) ---
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
+            // .dark = Ícones BRANCOS (para fundos escuros/coloridos)
+            statusBarStyle = SystemBarStyle.dark(
+                AndroidColor.TRANSPARENT
+            ),
             navigationBarStyle = SystemBarStyle.light(
                 AndroidColor.WHITE,
                 AndroidColor.WHITE
@@ -88,7 +92,10 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = "home",
-                        modifier = Modifier.padding(paddingValues)
+                        // --- TRUQUE DO DEGRADÊ NA BARRA ---
+                        // Removemos o padding do TOPO para o conteúdo subir atrás da barra.
+                        // Mantemos apenas o padding de BAIXO para a BottomBar não cobrir o conteúdo.
+                        modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
                     ) {
                         // --- HOME ---
                         composable("home") {
@@ -135,17 +142,12 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // --- FLUXO DE CHAT ---
-
-                        // 1. Lista de Conversas (Aba Principal)
                         composable("chat") {
                             ChatListScreen(
                                 navController = navController,
                                 authViewModel = authViewModel
                             )
                         }
-
-                        // 2. Tela de Conversa (Ao clicar na lista)
-
 
                         composable(
                             route = "product_details/{productId}",
@@ -168,23 +170,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(
-                            route = "chat_detail/{chatId}?status={status}",
-                            arguments = listOf(
-                                navArgument("chatId") { type = NavType.StringType },
-                                navArgument("status") {
-                                    type = NavType.StringType
-                                    defaultValue = "active" // Se não passar nada, assume ativo
-                                }
-                            )
+                            route = "chat_detail/{chatId}",
+                            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val chatId = backStackEntry.arguments?.getString("chatId")
-                            val status = backStackEntry.arguments?.getString("status")
-
-                            ChatDetailScreen(
-                                navController = navController,
-                                chatId = chatId,
-                                initialStatus = status
-                            )
+                            ChatDetailScreen(navController = navController, chatId = chatId)
                         }
                     }
                 }

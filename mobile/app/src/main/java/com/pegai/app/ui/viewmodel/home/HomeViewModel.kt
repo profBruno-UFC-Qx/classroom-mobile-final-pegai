@@ -10,7 +10,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.toObject
 import com.pegai.app.data.data.repository.ProductRepository
-import com.pegai.app.model.Category // Import da Enum de Categorias
+import com.pegai.app.model.Category
 import com.pegai.app.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,23 +22,17 @@ import java.util.Locale
 
 class HomeViewModel : ViewModel() {
 
-    // Estado Único da Tela
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
-
-    // Lista "mestra" para filtros locais
     private var todosProdutosCache: List<Product> = emptyList()
 
-    // --- LISTA DE CATEGORIAS PARA O CARROSSEL DA HOME ---
     val categoriasFiltro = listOf("Todos") + Category.entries.map { it.nomeExibicao }
 
     init {
         carregarDadosIniciais()
     }
-
-    // --- AÇÕES DE UI ---
 
     fun selecionarCategoria(categoria: String) {
         _uiState.update { it.copy(categoriaSelecionada = categoria) }
@@ -50,36 +44,34 @@ class HomeViewModel : ViewModel() {
         aplicarFiltros()
     }
 
-    // --- LÓGICA DE DADOS ---
-
     fun carregarDadosIniciais() {
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
             try {
-                // AGORA É 100% REAL: Carrega do Firebase. Se vier vazio, a tela fica vazia.
-                val dadosCarregados = carregarProdutosCompletos()
+                val produtosReais = try {
+                    carregarProdutosCompletos()
+                } catch (e: Exception) {
+                    emptyList()
+                }
 
-                todosProdutosCache = dadosCarregados
-                ProductRepository.salvarNoCache(dadosCarregados)
+                val produtosFakes = gerarDadosMock()
+                val listaCombinada = produtosReais + produtosFakes
+
+                todosProdutosCache = listaCombinada
+                ProductRepository.salvarNoCache(listaCombinada)
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        produtos = dadosCarregados,
-                        // Populares: Nota alta (> 4.5)
-                        produtosPopulares = dadosCarregados.filter { p -> p.nota >= 4.5 }
+                        produtos = listaCombinada,
+                        produtosPopulares = listaCombinada.filter { p -> p.nota >= 4.5 }
                     )
                 }
-
-                // Log para depuração
-                Log.d("HomeViewModel", "Produtos carregados: ${dadosCarregados.size}")
-
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false, erro = "Erro ao carregar produtos")
                 }
-                Log.e("Firestore", "Erro crítico ao carregar produtos", e)
             }
         }
     }
@@ -90,14 +82,7 @@ class HomeViewModel : ViewModel() {
         val cat = estadoAtual.categoriaSelecionada
 
         val listaFiltrada = todosProdutosCache.filter { produto ->
-            // 1. Filtro de Categoria
-            val matchCategoria = if (cat == "Todos") {
-                true
-            } else {
-                produto.categoria.equals(cat, ignoreCase = true)
-            }
-
-            // 2. Filtro de Texto (Título ou Descrição)
+            val matchCategoria = if (cat == "Todos") true else produto.categoria.equals(cat, ignoreCase = true)
             val matchTexto = produto.titulo.lowercase().contains(termo) ||
                     produto.descricao.lowercase().contains(termo)
 
@@ -106,8 +91,6 @@ class HomeViewModel : ViewModel() {
 
         _uiState.update { it.copy(produtos = listaFiltrada) }
     }
-
-    // --- LÓGICA DE LOCALIZAÇÃO ---
 
     @SuppressLint("MissingPermission")
     fun obterLocalizacaoAtual(context: Context) {
@@ -146,18 +129,13 @@ class HomeViewModel : ViewModel() {
 
                 _uiState.update { it.copy(localizacaoAtual = texto) }
             }
-        } catch (e: Exception) {
-            // Ignora silenciosamente
-        }
+        } catch (e: Exception) { }
     }
-
-    // --- MÉTODOS AUXILIARES DE BUSCA NO FIREBASE ---
 
     suspend fun carregarProdutosCompletos(): List<Product> {
         val produtosBase = carregarProdutosBase()
 
         return produtosBase.map { produto ->
-            // Enriquece o produto com nome do dono e avaliações
             val donoNome = carregarNomeDono(produto.donoId)
             val (notaMedia, totalAvaliacoes) = calcularAvaliacoes(produto.pid)
 
@@ -169,26 +147,25 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    suspend fun carregarProdutosBase(): List<Product> {
+    private suspend fun carregarProdutosBase(): List<Product> {
         val snapshot = db.collection("products").get().await()
         return snapshot.documents.mapNotNull { doc ->
-            // Importante: garante que o ID do documento vá para o objeto
             doc.toObject<Product>()?.copy(pid = doc.id)
         }
     }
 
-    suspend fun carregarNomeDono(donoId: String): String {
-        try {
+    private suspend fun carregarNomeDono(donoId: String): String {
+        return try {
             if (donoId.isBlank()) return "Usuário"
             val doc = db.collection("users").document(donoId).get().await()
-            return doc.getString("nome") ?: "Usuário"
+            doc.getString("nome") ?: "Usuário"
         } catch (e: Exception) {
-            return "Usuário"
+            "Usuário"
         }
     }
 
-    suspend fun calcularAvaliacoes(produtoId: String): Pair<Double, Int> {
-        try {
+    private suspend fun calcularAvaliacoes(produtoId: String): Pair<Double, Int> {
+        return try {
             val snapshot = db.collection("avaliacao")
                 .whereEqualTo("produtoId", produtoId)
                 .get()
@@ -199,9 +176,102 @@ class HomeViewModel : ViewModel() {
             val notas = snapshot.documents.mapNotNull { it.getDouble("nota") }
             val media = if (notas.isNotEmpty()) notas.average() else 0.0
 
-            return Pair(media, notas.size)
+            Pair(media, notas.size)
         } catch (e: Exception) {
-            return Pair(0.0, 0)
+            Pair(0.0, 0)
         }
+    }
+
+    private fun gerarDadosMock(): List<Product> {
+        return listOf(
+            Product(
+                pid = "mock1",
+                titulo = "Câmera Canon T7",
+                descricao = "Câmera profissional ideal para iniciantes.",
+                preco = 150.0,
+                categoria = "Eletrônicos",
+                imageUrl = "https://m.media-amazon.com/images/I/71EWRyqzw0L._AC_SL1500_.jpg",
+                nota = 4.8,
+                totalAvaliacoes = 12,
+                donoNome = "Ana Souza"
+            ),
+            Product(
+                pid = "mock2",
+                titulo = "Furadeira Bosch",
+                descricao = "Furadeira de impacto potente.",
+                preco = 45.0,
+                categoria = "Ferramentas",
+                imageUrl = "https://images.tcdn.com.br/img/img_prod/463223/furadeira_de_impacto_bosch_gsb_13_re_650w_127v_62_1_20200427150935.jpg",
+                nota = 4.9,
+                totalAvaliacoes = 34,
+                donoNome = "Carlos Ferragens"
+            ),
+            Product(
+                pid = "mock3",
+                titulo = "Barraca de Camping",
+                descricao = "Barraca para 4 pessoas, impermeável.",
+                preco = 60.0,
+                categoria = "Esportes e Lazer",
+                imageUrl = "https://m.media-amazon.com/images/I/61k1b2+6CLL._AC_SX679_.jpg",
+                nota = 4.5,
+                totalAvaliacoes = 8,
+                donoNome = "Marcos Aventura"
+            ),
+            Product(
+                pid = "mock4",
+                titulo = "PlayStation 5",
+                descricao = "Console última geração com 2 controles.",
+                preco = 120.0,
+                categoria = "Jogos",
+                imageUrl = "https://m.media-amazon.com/images/I/51051FiD9UL._SX522_.jpg",
+                nota = 5.0,
+                totalAvaliacoes = 156,
+                donoNome = "João Gamer"
+            ),
+            Product(
+                pid = "mock5",
+                titulo = "Mala de Viagem G",
+                descricao = "Mala rígida 360 graus.",
+                preco = 35.0,
+                categoria = "Moda e Acessórios",
+                imageUrl = "https://m.media-amazon.com/images/I/61sGj2-gJFL._AC_SX679_.jpg",
+                nota = 4.2,
+                totalAvaliacoes = 5,
+                donoNome = "Clara Viagens"
+            ),
+            Product(
+                pid = "mock6",
+                titulo = "Projetor Epson",
+                descricao = "Ideal para apresentações e cinema em casa.",
+                preco = 90.0,
+                categoria = "Eletrônicos",
+                imageUrl = "https://m.media-amazon.com/images/I/61s7s+eIruL._AC_SX679_.jpg",
+                nota = 4.7,
+                totalAvaliacoes = 22,
+                donoNome = "Tech Solutions"
+            ),
+            Product(
+                pid = "mock7",
+                titulo = "Bicicleta Mountain Bike",
+                descricao = "Aro 29, freio a disco.",
+                preco = 70.0,
+                categoria = "Esportes e Lazer",
+                imageUrl = "https://m.media-amazon.com/images/I/81wGn2TQJeL._AC_SX679_.jpg",
+                nota = 4.6,
+                totalAvaliacoes = 40,
+                donoNome = "Pedro Pedal"
+            ),
+            Product(
+                pid = "mock8",
+                titulo = "Kit Ferramentas",
+                descricao = "Maleta completa com 100 peças.",
+                preco = 25.0,
+                categoria = "Ferramentas",
+                imageUrl = "https://m.media-amazon.com/images/I/71+2Z8m-EWL._AC_SX679_.jpg",
+                nota = 4.3,
+                totalAvaliacoes = 10,
+                donoNome = "Zé da Obra"
+            )
+        )
     }
 }

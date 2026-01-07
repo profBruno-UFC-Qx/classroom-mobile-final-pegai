@@ -2,12 +2,8 @@ package com.pegai.app.ui.viewmodel.details
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.pegai.app.data.data.repository.ProductRepository
-import com.pegai.app.data.data.repository.UserRepository
-import com.pegai.app.data.data.utils.formatarTempo
-import com.pegai.app.model.Avaliacao
+import com.google.firebase.firestore.toObject
 import com.pegai.app.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,116 +11,92 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.util.concurrent.TimeUnit
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class ProductDetailsViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductDetailsUiState())
     val uiState: StateFlow<ProductDetailsUiState> = _uiState.asStateFlow()
 
-    private val auth = FirebaseAuth.getInstance()
-
-    suspend fun carregarAvaliacoesDoProduto(produtoId: String): List<Avaliacao> {
-        val snapshot = FirebaseFirestore.getInstance()
-            .collection("avaliacao")
-            .whereEqualTo("produtoId", produtoId)
-            .get()
-            .await()
-
-        return snapshot.toObjects(Avaliacao::class.java)
-    }
-
-
-
-    suspend fun carregarReviewsUI(produtoId: String): List<ReviewUI> {
-        val avaliacoes = carregarAvaliacoesDoProduto(produtoId)
-
-        return avaliacoes.map { avaliacao ->
-            ReviewUI(
-                authorName = UserRepository.getNomeUsuario(avaliacao.usuarioId),
-                comment = avaliacao.descricao,
-                rating = avaliacao.nota,
-                date = formatarTempo(avaliacao.data)
-            )
-        }
-    }
+    private val db = FirebaseFirestore.getInstance()
 
     fun carregarDetalhes(productId: String?) {
+        if (productId == null) return
+
         _uiState.update { it.copy(isLoading = true) }
 
-        if (productId == null) {
-            _uiState.update { it.copy(isLoading = false, erro = "Produto não encontrado") }
-            return
-        }
-
         viewModelScope.launch {
-            val produto = ProductRepository.getProdutoPorId(productId)
+            try {
+                val doc = db.collection("products").document(productId).get().await()
+                val produto = doc.toObject<Product>()?.copy(pid = doc.id)
 
-            if (produto == null) {
-                _uiState.update { it.copy(isLoading = false, erro = "Produto indisponível") }
-                return@launch
-            }
+                if (produto != null) {
+                    val nomeDono = carregarNomeDono(produto.donoId)
 
-            val reviews = carregarReviewsUI(productId)
+                    // Fallback: usa 'imageUrl' se a lista de imagens estiver vazia
+                    val listaImagens = produto.imagens.ifEmpty {
+                        if (produto.imageUrl.isNotEmpty()) listOf(produto.imageUrl) else emptyList()
+                    }
 
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    produto = produto,
-                    imagensCarrossel = if (produto.imagens.isNotEmpty())
-                        produto.imagens else listOf(produto.imageUrl),
-                    nomeDono = produto.donoNome,
-                    avaliacoesCount = reviews.size,
-                    reviews = reviews,
-                    isDonoDoAnuncio = produto.donoId == auth.currentUser?.uid
-                )
+                    val reviewsReais = carregarReviewsDoFirebase(productId)
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            produto = produto,
+                            nomeDono = nomeDono,
+                            avaliacoesCount = reviewsReais.size,
+                            imagensCarrossel = listaImagens,
+                            reviews = reviewsReais
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, erro = "Produto não encontrado") }
+                }
+
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, erro = e.message) }
             }
         }
     }
 
+    private suspend fun carregarNomeDono(donoId: String): String {
+        return try {
+            if (donoId.isBlank()) return "Anônimo"
+            val doc = db.collection("users").document(donoId).get().await()
+            doc.getString("nome") ?: "Anônimo"
+        } catch (e: Exception) {
+            "Desconhecido"
+        }
+    }
 
-    private fun encontrarProdutoMock(id: String): Product? {
-        val lista = listOf(
-            Product(
-                pid = "1",
-                titulo = "Calculadora HP 12c",
-                descricao = "Calculadora usada, perfeita para contabilidade.",
-                preco = 15.0,
-                categoria = "Calculadoras",
-                imageUrl = "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw",
-                donoId = "user_mock_1",
-                donoNome = "Maria",
-                nota = 4.8,
-                totalAvaliacoes = 12,
-                imagens = listOf(
-                    "https://photos.enjoei.com.br/calculadora-financeira-hp-12c-91594098/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy80NTg3OTc2L2RjNzU0ZDMzOWY1MGNkYjZhMjM4ZjFhYWIxMzc1MzdkLmpwZw",
-                    "https://http2.mlstatic.com/D_NQ_NP_787622-MLB48827768466_012022-O.webp"
+    private suspend fun carregarReviewsDoFirebase(produtoId: String): List<ReviewUI> {
+        return try {
+            val snapshot = db.collection("avaliacao")
+                .whereEqualTo("produtoId", produtoId)
+                .get()
+                .await()
+
+            snapshot.documents.map { doc ->
+                val nomeAutor = doc.getString("autorNome") ?: "Usuário"
+                val comentario = doc.getString("comentario") ?: doc.getString("texto") ?: ""
+                val nota = doc.getDouble("nota")?.toInt() ?: 5
+
+                val dataObj = doc.getDate("data")
+                val dataFormatada = dataObj?.let {
+                    SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR")).format(it)
+                } ?: ""
+
+                ReviewUI(
+                    authorName = nomeAutor,
+                    comment = comentario,
+                    rating = nota,
+                    date = dataFormatada
                 )
-            ),
-            Product(
-                pid = "2",
-                titulo = "Jaleco Quixadá",
-                descricao = "Tamanho M. Pouco uso.",
-                preco = 35.0,
-                categoria = "Jalecos",
-                imageUrl = "https://photos.enjoei.com.br/jaleco-branco-81336648/800x800/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy8xMzQ3Mzc3NC82MmY4Nzc0OGU2YTQwNzVkM2Q3OGNhMjFkZDZhY2NkNS5qcGc",
-                donoId = "user_2",
-                donoNome = "João",
-                nota = 5.0,
-                totalAvaliacoes = 3
-            ),
-            Product(
-                pid = "3",
-                titulo = "Kit Arduino",
-                descricao = "Kit completo para iniciantes.",
-                preco = 20.0,
-                categoria = "Eletrônicos",
-                imageUrl = "https://cdn.awsli.com.br/78/78150/produto/338952433/kit_arduino_uno_smd_starter_com_caixa_organizadora-3xak1vrhvm.png",
-                donoId = "user_3",
-                donoNome = "Pedro",
-                nota = 4.5
-            )
-        )
-        return lista.find { it.pid == id }
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 }

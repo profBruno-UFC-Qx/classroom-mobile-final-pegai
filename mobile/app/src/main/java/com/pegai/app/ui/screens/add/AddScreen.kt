@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -76,17 +77,18 @@ fun AddProductContent(
 
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // --- GERENCIAMENTO DE MENSAGENS (SUCESSO OU ERRO) ---
+    // Degradê da Identidade Visual
+    val brandGradient = Brush.horizontalGradient(
+        colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2))
+    )
+
+    // --- GERENCIAMENTO DE MENSAGENS ---
     LaunchedEffect(uiState.mensagemSucesso, uiState.erro) {
         if (uiState.mensagemSucesso != null) {
-            // Exibe o Snackbar (serve tanto para Criar quanto para Atualizar)
             snackbarHostState.showSnackbar(uiState.mensagemSucesso!!)
-
-            // Se for criação de novo produto, muda para a aba de lista
             if (uiState.idEmEdicao == null) {
                 tabIndex = 1
             }
-
             viewModel.limparMensagens()
         }
         if (uiState.erro != null) {
@@ -98,83 +100,135 @@ fun AddProductContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color(0xFFF5F5F5),
-        contentWindowInsets = WindowInsets(0.dp),
-        topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
+        contentWindowInsets = WindowInsets(0.dp)
+    ) { paddingValues ->
+
+        // Coluna Principal
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = paddingValues.calculateBottomPadding())
+        ) {
+
+            // === HEADER COM DEGRADÊ (EDGE-TO-EDGE) ===
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(brandGradient)
+            ) {
+                // 1. Espaço para a Barra de Status do Android
+                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+
+                // 2. Título Centralizado
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp, bottom = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Gerenciar Anúncios", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
+                    Text(
+                        text = "Gerenciar Anúncios",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
-                TabRow(
-                    selectedTabIndex = tabIndex,
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF0E8FC6),
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
-                            color = Color(0xFF0E8FC6)
-                        )
-                    }
+                // 3. Abas com Cantos Superiores Arredondados
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFF5F5F5),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            text = { Text(title, fontWeight = FontWeight.Bold) },
-                            selected = tabIndex == index,
-                            onClick = {
-                                tabIndex = index
-                                if (index == 0) viewModel.limparFormulario()
-                            },
-                            selectedContentColor = Color(0xFF0E8FC6),
-                            unselectedContentColor = Color.Gray
-                        )
+                    // TabRow com fundo Branco
+                    TabRow(
+                        selectedTabIndex = tabIndex,
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF0E8FC6),
+                        indicator = { tabPositions ->
+                            // Indicador com Degradê
+                            Box(
+                                modifier = Modifier
+                                    .tabIndicatorOffset(tabPositions[tabIndex])
+                                    .height(3.dp)
+                                    .background(brandGradient)
+                            )
+                        },
+                        divider = {
+                            HorizontalDivider(color = Color(0xFFEEEEEE))
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            val isSelected = tabIndex == index
+                            Tab(
+                                selected = isSelected,
+                                onClick = {
+                                    tabIndex = index
+                                    if (index == 0) viewModel.limparFormulario()
+                                },
+                                text = {
+                                    Text(
+                                        text = title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        // Azul se selecionado, Cinza se não
+                                        color = if (isSelected) Color(0xFF0E8FC6) else Color.Gray
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
-        ) {
-            if (tabIndex == 0) {
-                // ABA 1: NOVO PRODUTO
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                        .verticalScroll(rememberScrollState())
-                        .padding(top = 16.dp, bottom = bottomPadding + 80.dp)
-                ) {
-                    Text("Cadastrar novo item", style = MaterialTheme.typography.titleMedium, color = Color.Gray, modifier = Modifier.padding(bottom = 16.dp))
 
-                    CamposDoFormulario(viewModel, uiState)
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = { viewModel.salvarProduto() },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0E8FC6))
+            // === CONTEÚDO DAS ABAS ===
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                if (tabIndex == 0) {
+                    // ABA 1: NOVO PRODUTO
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(top = 16.dp, bottom = 80.dp)
                     ) {
-                        Text("Publicar Agora", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Cadastrar novo item",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        CamposDoFormulario(viewModel, uiState)
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { viewModel.salvarProduto() },
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0E8FC6))
+                        ) {
+                            Text("Publicar Agora", fontWeight = FontWeight.Bold)
+                        }
                     }
+                } else {
+                    // ABA 2: MEUS PRODUTOS (LISTA)
+                    ListaMeusProdutos(
+                        produtos = uiState.meusProdutos,
+                        onManage = { produto -> viewModel.abrirModalEdicao(produto) },
+                        bottomPadding = bottomPadding
+                    )
                 }
-            } else {
-                // ABA 2: MEUS PRODUTOS (LISTA)
-                ListaMeusProdutos(
-                    produtos = uiState.meusProdutos,
-                    onManage = { produto -> viewModel.abrirModalEdicao(produto) },
-                    bottomPadding = bottomPadding
-                )
             }
         }
     }
 
-    // --- MODAL DE EDIÇÃO (BOTTOM SHEET) ---
+    // --- MODAL DE EDIÇÃO ---
     if (uiState.mostrarModalEdicao) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.fecharModal() },
@@ -199,7 +253,6 @@ fun AddProductContent(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Botão Salvar
                 Button(
                     onClick = { viewModel.salvarProduto() },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -211,7 +264,6 @@ fun AddProductContent(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Botão Excluir
                 OutlinedButton(
                     onClick = { viewModel.solicitarExclusao() },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -227,7 +279,7 @@ fun AddProductContent(
         }
     }
 
-    // --- DIALOG DE CONFIRMAÇÃO DE EXCLUSÃO ---
+    // --- DIALOG DE CONFIRMAÇÃO ---
     if (uiState.mostrarDialogoExclusao) {
         AlertDialog(
             onDismissRequest = { viewModel.cancelarExclusao() },
@@ -254,7 +306,7 @@ fun AddProductContent(
     }
 }
 
-// --- COMPONENTE REUTILIZÁVEL: CAMPOS DO FORMULÁRIO ---
+// --- CAMPOS DO FORMULÁRIO  ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CamposDoFormulario(
@@ -266,7 +318,6 @@ fun CamposDoFormulario(
         onResult = { uris -> viewModel.onFotosSelecionadas(uris) }
     )
 
-    // FOTOS
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -316,7 +367,6 @@ fun CamposDoFormulario(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    // TÍTULO
     OutlinedTextField(
         value = uiState.titulo,
         onValueChange = { viewModel.onTituloChange(it) },
@@ -327,7 +377,6 @@ fun CamposDoFormulario(
     )
     Spacer(modifier = Modifier.height(12.dp))
 
-    // PREÇO
     OutlinedTextField(
         value = uiState.preco,
         onValueChange = { viewModel.onPrecoChange(it) },
@@ -339,7 +388,6 @@ fun CamposDoFormulario(
     )
     Spacer(modifier = Modifier.height(12.dp))
 
-    // CATEGORIA
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -380,7 +428,6 @@ fun CamposDoFormulario(
     }
     Spacer(modifier = Modifier.height(12.dp))
 
-    // DESCRIÇÃO
     OutlinedTextField(
         value = uiState.descricao,
         onValueChange = { viewModel.onDescricaoChange(it) },
@@ -400,7 +447,11 @@ fun ListaMeusProdutos(
 ) {
     if (produtos.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Você ainda não tem anúncios.", color = Color.Gray)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Add, null, tint = Color.LightGray, modifier = Modifier.size(64.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Você ainda não tem anúncios.", color = Color.Gray)
+            }
         }
     } else {
         LazyColumn(
@@ -445,7 +496,7 @@ fun MeuProdutoCard(
             }
 
             IconButton(onClick = { onManage(produto) }) {
-                Icon(Icons.Default.Settings, contentDescription = "Gerenciar", tint = Color.Gray)
+                Icon(Icons.Default.Edit, contentDescription = "Gerenciar", tint = Color.Gray)
             }
         }
     }

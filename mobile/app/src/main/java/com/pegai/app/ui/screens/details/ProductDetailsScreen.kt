@@ -2,7 +2,6 @@ package com.pegai.app.ui.screens.details
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -49,14 +48,13 @@ fun ProductDetailsScreen(
         viewModel.carregarDetalhes(productId)
     }
 
-    var currentImageIndex by remember { mutableStateOf(0) }
+    var currentImageIndex by remember { mutableIntStateOf(0) }
     var showRentalConfirmationDialog by remember { mutableStateOf(false) }
     var showLoginRequiredDialog by remember { mutableStateOf(false) }
 
     val mainColor = Color(0xFF0E8FC6)
-    val bottomBarGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF0A5C8A), Color(0xFF0E8FC6), Color(0xFF2ED1B2))
-    )
+    val brandGradient = Brush.horizontalGradient(listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
+    val bottomBarGradient = Brush.horizontalGradient(listOf(Color(0xFF0A5C8A), Color(0xFF0E8FC6), Color(0xFF2ED1B2)))
 
     if (uiState.isLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -70,6 +68,7 @@ fun ProductDetailsScreen(
     val reviewsList = uiState.reviews
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             BottomRentBar(
                 price = "R$ ${String.format("%.2f", product.preco)} / dia",
@@ -81,120 +80,216 @@ fun ProductDetailsScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
-                .verticalScroll(rememberScrollState())
                 .background(Color.White)
         ) {
-            // === CARROSSEL ===
-            Box(modifier = Modifier.fillMaxWidth().height(320.dp)) {
-                Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)).background(Color(0xFFF0F0F0))) {
-                    if (imagens.isNotEmpty()) {
-                        AsyncImage(
-                            model = imagens[currentImageIndex],
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .background(brandGradient)
+                    .align(Alignment.TopCenter)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+
+                Box(modifier = Modifier.fillMaxWidth().height(480.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                            .background(Color.White)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF0F0F0))) {
+                            if (imagens.isNotEmpty()) {
+                                AsyncImage(
+                                    model = imagens[currentImageIndex],
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .background(brandGradient)
                         )
                     }
-                }
 
-                if (imagens.size > 1) {
-                    if (currentImageIndex > 0) {
-                        Box(modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp)) {
-                            IconButton(onClick = { currentImageIndex-- }, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape).size(40.dp)) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White)
+                    if (imagens.size > 1) {
+                        if (currentImageIndex > 0) {
+                            Surface(
+                                onClick = { currentImageIndex-- },
+                                modifier = Modifier.align(Alignment.CenterStart).padding(start = 12.dp).size(40.dp),
+                                shape = CircleShape,
+                                color = Color.White,
+                                shadowElevation = 8.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = mainColor)
+                                }
+                            }
+                        }
+
+                        if (currentImageIndex < imagens.size - 1) {
+                            Surface(
+                                onClick = { currentImageIndex++ },
+                                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp).size(40.dp),
+                                shape = CircleShape,
+                                color = Color.White,
+                                shadowElevation = 8.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = mainColor)
+                                }
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 20.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color.White,
+                            shadowElevation = 8.dp
+                        ) {
+                            Text(
+                                text = "${currentImageIndex + 1}/${imagens.size}",
+                                color = mainColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp).size(48.dp),
+                        shape = CircleShape,
+                        color = Color.White,
+                        shadowElevation = 8.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = mainColor)
+                        }
+                    }
+
+                    Row(modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 16.dp)) {
+                        Surface(
+                            onClick = { },
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 8.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Share, null, tint = mainColor)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Surface(
+                            onClick = { },
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 8.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.FavoriteBorder, null, tint = mainColor)
                             }
                         }
                     }
-                    if (currentImageIndex < imagens.size - 1) {
-                        Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)) {
-                            IconButton(onClick = { currentImageIndex++ }, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape).size(40.dp)) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.White)
-                            }
-                        }
-                    }
-                    Box(modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp).background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp)).padding(8.dp, 4.dp)) {
-                        Text("${currentImageIndex + 1}/${imagens.size}", color = Color.White, fontSize = 12.sp)
-                    }
                 }
 
-                IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 12.dp).offset(y = (-25).dp).background(Color.White.copy(alpha = 0.9f), CircleShape).size(50.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.Black)
-                }
-
-                Row(modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(end = 12.dp).offset(y = (-25).dp)) {
-                    IconButton(onClick = { /* Share */ }, modifier = Modifier.background(Color.White.copy(alpha = 0.9f), CircleShape).size(50.dp)) {
-                        Icon(Icons.Default.Share, null, tint = Color.Black)
+                Column(modifier = Modifier.background(Color.White).padding(24.dp)) {
+                    Surface(color = mainColor.copy(alpha = 0.1f), shape = RoundedCornerShape(50)) {
+                        Text(
+                            text = product.categoria,
+                            modifier = Modifier.padding(12.dp, 6.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = mainColor,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = { /* Favorite */ }, modifier = Modifier.background(Color.White.copy(alpha = 0.9f), CircleShape).size(50.dp)) {
-                        Icon(Icons.Default.FavoriteBorder, null, tint = Color.Black)
-                    }
-                }
-            }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-            // === CONTEÚDO ===
-            Column(modifier = Modifier.padding(24.dp)) {
-                Surface(color = mainColor.copy(alpha = 0.1f), shape = RoundedCornerShape(50)) {
-                    Text(product.categoria, modifier = Modifier.padding(12.dp, 6.dp), style = MaterialTheme.typography.labelMedium, color = mainColor, fontWeight = FontWeight.Bold)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(product.titulo, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
-                    Text(" ${product.nota} ", fontWeight = FontWeight.SemiBold)
-                    Text("• ${uiState.avaliacoesCount} Avaliações", color = Color.Gray)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Color(0xFFEEEEEE))
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // CARD DONO
-                Text("Anunciado por", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFF0F0F0)),
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        navController.navigate(Screen.PublicProfile.createRoute(product.donoId))
-                    }
-                ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray), contentAlignment = Alignment.Center) {
-                            Text(uiState.nomeDono.first().toString(), fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(uiState.nomeDono, fontWeight = FontWeight.Bold)
-                            Text("Ver perfil", fontSize = 12.sp, color = Color.Gray)
-                        }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.LightGray)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Sobre o produto", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(product.descricao, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF5A5A5A), lineHeight = 24.sp)
-
-                Spacer(modifier = Modifier.height(32.dp))
-                Text("Avaliações do Item", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                reviewsList.forEach { review ->
-                    ReviewProdutoItem(review)
+                    Text(product.titulo, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
+                        Text(" ${product.nota} ", fontWeight = FontWeight.SemiBold)
+                        Text("• ${uiState.avaliacoesCount} Avaliações", color = Color.Gray)
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color(0xFFEEEEEE))
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text("Anunciado por", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, Color(0xFFF0F0F0)),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            navController.navigate(Screen.PublicProfile.createRoute(product.donoId))
+                        }
+                    ) {
+                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = uiState.nomeDono.firstOrNull()?.toString() ?: "U",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(uiState.nomeDono, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+                                Text("Ver perfil", fontSize = 12.sp, color = mainColor)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.LightGray)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text("Sobre o produto", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = product.descricao, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF5A5A5A), lineHeight = 24.sp)
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Text("Avaliações do Item", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (reviewsList.isEmpty()) {
+                        Text("Nenhuma avaliação ainda.", color = Color.Gray, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                    } else {
+                        reviewsList.forEach { review ->
+                            ReviewProdutoItem(review)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
-                Spacer(modifier = Modifier.height(100.dp))
             }
         }
 
@@ -202,26 +297,15 @@ fun ProductDetailsScreen(
             AlertDialog(
                 onDismissRequest = { showRentalConfirmationDialog = false },
                 title = { Text(text = "Solicitar Aluguel?", fontWeight = FontWeight.Bold) },
-                text = {
-                    Text("Você deseja enviar uma solicitação de aluguel para ${uiState.nomeDono}? O chat será aberto para negociação.")
-                },
+                text = { Text("Você deseja enviar uma solicitação de aluguel para ${uiState.nomeDono}? O chat será aberto para negociação.") },
                 confirmButton = {
                     Button(
-                        onClick = {
-                            showRentalConfirmationDialog = false
-                            // TODO: Navegar para o chat no futuro
-                            // navController.navigate("chat_detail/novo")
-                        },
+                        onClick = { showRentalConfirmationDialog = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         contentPadding = PaddingValues(),
                         shape = RoundedCornerShape(25.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .background(bottomBarGradient)
-                                .padding(horizontal = 20.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.background(bottomBarGradient).padding(horizontal = 20.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                             Text("Sim, solicitar", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -250,12 +334,7 @@ fun ProductDetailsScreen(
                         contentPadding = PaddingValues(),
                         shape = RoundedCornerShape(25.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .background(bottomBarGradient)
-                                .padding(horizontal = 20.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.background(bottomBarGradient).padding(horizontal = 20.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                             Text("Fazer Login", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -271,7 +350,6 @@ fun ProductDetailsScreen(
     }
 }
 
-// COMPONENTES AUXILIARES
 @Composable
 fun ReviewProdutoItem(review: ReviewUI) {
     Card(

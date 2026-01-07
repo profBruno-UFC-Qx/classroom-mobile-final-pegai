@@ -49,26 +49,18 @@ fun ProfileScreen(
     val authUser by authViewModel.usuarioLogado.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    // --- ESTADOS LOCAIS ---
     var showPixManagerDialog by remember { mutableStateOf(false) }
     var tempChavePix by remember { mutableStateOf("") }
 
-    // --- CONFIGURAÇÃO DO SELETOR DE FOTOS (GALERIA) ---
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri ->
-            if (uri != null) {
-                viewModel.atualizarFotoDePerfil(uri)
-            }
-        }
+        onResult = { uri -> uri?.let { viewModel.atualizarFotoDePerfil(it) } }
     )
 
-    // Gradiente da Identidade Visual
     val mainGradient = Brush.verticalGradient(
         colors = listOf(Color(0xFF0A5C8A), Color(0xFF0E8FC6), Color(0xFF2ED1B2))
     )
 
-    // Carrega dados sempre que o usuário logado mudar
     LaunchedEffect(authUser) {
         viewModel.carregarDadosUsuario(authUser)
     }
@@ -88,9 +80,8 @@ fun ProfileScreen(
                     .background(Color(0xFFF5F5F5))
                     .verticalScroll(rememberScrollState())
             ) {
-                // === HEADER (Fundo Azul + Foto + Ações) ===
-                Box(modifier = Modifier.fillMaxWidth().height(380.dp)) {
-                    // Fundo Curvo
+                // --- CABEÇALHO ---
+                Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -99,11 +90,12 @@ fun ProfileScreen(
                     )
 
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 40.dp),
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                        Spacer(modifier = Modifier.height(20.dp))
+
                         Text(
                             "Meu Perfil",
                             color = Color.White,
@@ -112,27 +104,20 @@ fun ProfileScreen(
                             modifier = Modifier.padding(bottom = 20.dp)
                         )
 
-                        // --- 3 COLUNAS DO TOPO (Pix, Foto, Logout) ---
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 1. BOTÃO PIX (Esquerda)
+                            // Pix
                             Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        tempChavePix = uiState.chavePix
-                                        showPixManagerDialog = true
-                                    },
+                                modifier = Modifier.weight(1f).clickable {
+                                    tempChavePix = uiState.chavePix
+                                    showPixManagerDialog = true
+                                },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                                    modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.2f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -146,33 +131,20 @@ fun ProfileScreen(
                                 Text("Chave PIX", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
 
-                            // 2. FOTO DE PERFIL (Centro)
+                            // Foto
                             Column(
                                 modifier = Modifier.weight(1.8f),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Box(contentAlignment = Alignment.BottomEnd) {
-                                    // Círculo da Foto
                                     Box(
-                                        modifier = Modifier
-                                            .size(110.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White)
-                                            .padding(3.dp)
-                                            .clip(CircleShape)
+                                        modifier = Modifier.size(110.dp).clip(CircleShape).background(Color.White).padding(3.dp).clip(CircleShape)
                                     ) {
                                         if (uiState.isLoading) {
-                                            // Loading enquanto sobe a foto
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(30.dp),
-                                                    color = Color(0xFF0E8FC6)
-                                                )
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator(modifier = Modifier.size(30.dp), color = Color(0xFF0E8FC6))
                                             }
-                                        } else if (uiState.user?.fotoUrl != null && uiState.user?.fotoUrl!!.isNotEmpty()) {
+                                        } else if (uiState.user?.fotoUrl?.isNotEmpty() == true) {
                                             AsyncImage(
                                                 model = uiState.user?.fotoUrl,
                                                 contentDescription = "Foto",
@@ -180,13 +152,7 @@ fun ProfileScreen(
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         } else {
-                                            // Placeholder (Inicial do Nome)
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .background(Color(0xFFE0E0E0)),
-                                                contentAlignment = Alignment.Center
-                                            ) {
+                                            Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
                                                 Text(
                                                     text = uiState.user?.nome?.first()?.toString() ?: "U",
                                                     fontSize = 40.sp,
@@ -197,52 +163,32 @@ fun ProfileScreen(
                                         }
                                     }
 
-                                    // Botão Editar (Lápis) - Abre Galeria
                                     Surface(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .offset(x = (-4).dp, y = (-4).dp)
-                                            .clickable {
-                                                photoPickerLauncher.launch(
-                                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                                )
-                                            },
+                                        modifier = Modifier.size(32.dp).offset(x = (-4).dp, y = (-4).dp).clickable {
+                                            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        },
                                         shape = CircleShape,
                                         color = Color(0xFF0E8FC6),
                                         border = BorderStroke(2.dp, Color.White),
                                         shadowElevation = 4.dp
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.Edit,
-                                                contentDescription = "Editar Foto",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(16.dp)
-                                            )
+                                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 }
                             }
 
-                            // 3. BOTÃO LOGOUT (Direita)
+                            // Logout
                             Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { authViewModel.logout() },
+                                modifier = Modifier.weight(1f).clickable { authViewModel.logout() },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                                    modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.2f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                        contentDescription = "Sair",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text("Sair", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -251,7 +197,6 @@ fun ProfileScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Nome e Email do Usuário
                         Text(
                             text = uiState.user?.nome ?: "Usuário",
                             color = Color.White,
@@ -266,15 +211,11 @@ fun ProfileScreen(
                     }
                 }
 
-                // === ÁREA DE STATUS (GRID 2x2) ===
+                // --- CARDS DE STATUS ---
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .offset(y = (-50).dp), // Sobe sobre o fundo azul
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-60).dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // LINHA 1: REPUTAÇÃO (Locador e Locatário)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -286,7 +227,6 @@ fun ProfileScreen(
                             subtext = "${uiState.user?.totalAvaliacoesLocador ?: 0} avaliações",
                             icon = Icons.Default.Store
                         )
-
                         StatusCard(
                             modifier = Modifier.weight(1f),
                             label = "Locatário",
@@ -296,7 +236,6 @@ fun ProfileScreen(
                         )
                     }
 
-                    // LINHA 2: ATIVIDADE (Aluguéis e Anúncios)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -308,7 +247,6 @@ fun ProfileScreen(
                             subtext = "Realizados",
                             icon = Icons.Default.SwapHoriz
                         )
-
                         StatusCard(
                             modifier = Modifier.weight(1f),
                             label = "Anúncios",
@@ -319,22 +257,19 @@ fun ProfileScreen(
                     }
                 }
 
-                // === MENU ===
+                // --- MENU ---
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .offset(y = (-30).dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-40).dp)
                 ) {
-                    ProfileMenuItem(icon = Icons.Default.Person, text = "Meus Dados Pessoais", onClick = { /* TODO */ })
-                    ProfileMenuItem(icon = Icons.Default.History, text = "Histórico de Empréstimos", onClick = { /* TODO */ })
-                    ProfileMenuItem(icon = Icons.Default.Settings, text = "Configurações", onClick = { /* TODO */ })
-                    ProfileMenuItem(icon = Icons.Default.Info, text = "Ajuda e Suporte", onClick = { /* TODO */ })
-                    Spacer(modifier = Modifier.height(50.dp))
+                    ProfileMenuItem(Icons.Default.Person, "Meus Dados Pessoais", { })
+                    ProfileMenuItem(Icons.Default.History, "Histórico de Empréstimos", { })
+                    ProfileMenuItem(Icons.Default.Settings, "Configurações", { })
+                    ProfileMenuItem(Icons.Default.Info, "Ajuda e Suporte", { })
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
 
-            // === DIÁLOGO PIX ===
+            // --- DIÁLOGO PIX ---
             if (showPixManagerDialog) {
                 Dialog(onDismissRequest = { showPixManagerDialog = false }) {
                     Card(
@@ -344,9 +279,7 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier
-                                .padding(24.dp)
-                                .verticalScroll(rememberScrollState()),
+                            modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -356,12 +289,7 @@ fun ProfileScreen(
                                 color = Color(0xFF0E8FC6)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Edite sua chave abaixo para gerar o QR Code.",
-                                color = Color.Gray,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center
-                            )
+                            Text("Edite sua chave abaixo para gerar o QR Code.", color = Color.Gray, fontSize = 14.sp, textAlign = TextAlign.Center)
                             Spacer(modifier = Modifier.height(16.dp))
                             OutlinedTextField(
                                 value = tempChavePix,
@@ -370,10 +298,7 @@ fun ProfileScreen(
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color(0xFF0E8FC6),
-                                    focusedLabelColor = Color(0xFF0E8FC6)
-                                )
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF0E8FC6), focusedLabelColor = Color(0xFF0E8FC6))
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
@@ -398,10 +323,7 @@ fun ProfileScreen(
                                 AsyncImage(
                                     model = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${uiState.chavePix}",
                                     contentDescription = "QR Code Pix",
-                                    modifier = Modifier
-                                        .size(180.dp)
-                                        .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-                                        .padding(8.dp)
+                                    modifier = Modifier.size(180.dp).border(1.dp, Color.LightGray, RoundedCornerShape(8.dp)).padding(8.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.height(16.dp))
@@ -416,8 +338,6 @@ fun ProfileScreen(
     }
 }
 
-// === COMPONENTES AUXILIARES ===
-
 @Composable
 fun StatusCard(
     modifier: Modifier = Modifier,
@@ -427,61 +347,22 @@ fun StatusCard(
     icon: ImageVector
 ) {
     Card(
-        modifier = modifier.height(125.dp), // Altura confortável para não cortar
+        modifier = modifier.height(125.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 12.dp, horizontal = 4.dp),
+            modifier = Modifier.fillMaxSize().padding(vertical = 12.dp, horizontal = 4.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Ícone no topo
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color(0xFF0E8FC6),
-                modifier = Modifier.size(24.dp)
-            )
+            Icon(icon, contentDescription = null, tint = Color(0xFF0E8FC6), modifier = Modifier.size(24.dp))
 
-            // Textos agrupados
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                // VALOR (Nota ou Número)
-                Text(
-                    text = value,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF333333),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
-
-                // RÓTULO (Locador/Locatário)
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF666666),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
-
-                // SUBTEXTO (Avaliações) - Permite 2 linhas
-                Text(
-                    text = subtext,
-                    fontSize = 11.sp,
-                    color = Color(0xFF999999),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF333333), textAlign = TextAlign.Center, maxLines = 1)
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF666666), textAlign = TextAlign.Center, maxLines = 1)
+                Text(subtext, fontSize = 11.sp, color = Color(0xFF999999), textAlign = TextAlign.Center, lineHeight = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -490,45 +371,18 @@ fun StatusCard(
 @Composable
 fun ProfileMenuItem(icon: ImageVector, text: String, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
         shadowElevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE1F5FE)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color(0xFF0E8FC6)
-                )
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFE1F5FE)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Color(0xFF0E8FC6))
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF424242),
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = Color.LightGray,
-                modifier = Modifier.size(20.dp)
-            )
+            Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242), modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
         }
     }
 }
