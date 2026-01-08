@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.ui.components.GuestPlaceholder
+import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.chat.ChatListViewModel
 
@@ -56,9 +57,8 @@ fun ChatListScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Como Locador", "Como Locatário")
-    val brandGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2))
-    )
+    // Alterado para usar a função do seu tema
+    val currentBrandGradient = brandGradient()
 
     if (user == null) {
         GuestPlaceholder(
@@ -73,7 +73,7 @@ fun ChatListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(brandGradient)
+                .background(currentBrandGradient)
         ) {
             // --- Header ---
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -93,22 +93,22 @@ fun ChatListScreen(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.background, // Dinâmico
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
                     TabRow(
                         selectedTabIndex = selectedTab,
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF0E8FC6),
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary, // Dinâmico
                         indicator = { tabPositions ->
                             Box(
                                 modifier = Modifier
                                     .tabIndicatorOffset(tabPositions[selectedTab])
                                     .height(3.dp)
-                                    .background(brandGradient)
+                                    .background(currentBrandGradient)
                             )
                         },
-                        divider = { HorizontalDivider(color = Color(0xFFEEEEEE)) },
+                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }, // Dinâmico
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         tabs.forEachIndexed { index, title ->
@@ -120,7 +120,7 @@ fun ChatListScreen(
                                         text = title,
                                         fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
                                         fontSize = 14.sp,
-                                        color = if (selectedTab == index) Color(0xFF0E8FC6) else Color.Gray
+                                        color = if (selectedTab == index) MaterialTheme.colorScheme.primary else Color.Gray
                                     )
                                 }
                             )
@@ -132,11 +132,11 @@ fun ChatListScreen(
             // --- Chat List Content ---
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color.White
+                color = MaterialTheme.colorScheme.background // Dinâmico
             ) {
                 if (uiState.isLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF0E8FC6))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (chatsParaExibir.isEmpty()) {
                     EmptyChatState(if (selectedTab == 0) "locador" else "locatário")
@@ -146,7 +146,7 @@ fun ChatListScreen(
                         contentPadding = PaddingValues(bottom = 100.dp)
                     ) {
                         items(chatsParaExibir) { chat ->
-                            ConversationItem(chat, brandGradient) {
+                            ConversationItem(chat, currentBrandGradient) {
                                 navController.navigate("chat_detail/${chat.chatId}")
                             }
                         }
@@ -179,7 +179,7 @@ fun ConversationItem(
                     .border(2.dp, borderGradient, CircleShape)
                     .padding(3.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFEEEEEE)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant), // Dinâmico
                 contentAlignment = Alignment.Center
             ) {
                 if (chat.otherUserPhoto.isNotEmpty()) {
@@ -211,7 +211,7 @@ fun ConversationItem(
                         text = chat.otherUserName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = Color(0xFF333333)
+                        color = MaterialTheme.colorScheme.onSurface // Dinâmico
                     )
                     Text(
                         text = chat.time,
@@ -223,7 +223,7 @@ fun ConversationItem(
                 Text(
                     text = chat.productName,
                     fontSize = 12.sp,
-                    color = Color(0xFF0E8FC6),
+                    color = MaterialTheme.colorScheme.primary, // Dinâmico
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -238,7 +238,10 @@ fun ConversationItem(
                 )
             }
         }
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF0F0F0))
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f) // Dinâmico
+        )
     }
 }
 

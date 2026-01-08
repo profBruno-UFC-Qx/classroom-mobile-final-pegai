@@ -31,6 +31,8 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.repository.ChatRepository
 import com.pegai.app.ui.navigation.Screen
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.details.ProductDetailsViewModel
 import com.pegai.app.ui.viewmodel.details.ReviewUI
@@ -56,8 +58,8 @@ fun ProductDetailsScreen(
     var showRentalConfirmationDialog by remember { mutableStateOf(false) }
     var showLoginRequiredDialog by remember { mutableStateOf(false) }
 
-    val mainColor = Color(0xFF0E8FC6)
-    val brandGradient = Brush.horizontalGradient(listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
+    val mainColor = MaterialTheme.colorScheme.primary
+    val currentBrandGradient = brandGradient()
     val bottomBarGradient = Brush.horizontalGradient(listOf(Color(0xFF0A5C8A), Color(0xFF0E8FC6), Color(0xFF2ED1B2)))
 
     if (uiState.isLoading) {
@@ -93,13 +95,14 @@ fun ProductDetailsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
         ) {
+            // Header dinâmico no topo
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)
-                    .background(brandGradient)
+                    .background(currentBrandGradient)
                     .align(Alignment.TopCenter)
             )
 
@@ -116,9 +119,9 @@ fun ProductDetailsScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                            .background(Color.White)
+                            .background(MaterialTheme.colorScheme.background)
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF0F0F0))) {
+                        Box(modifier = Modifier.fillMaxSize().background(getFieldColor())) {
                             if (imagens.isNotEmpty()) {
                                 AsyncImage(
                                     model = imagens[currentImageIndex],
@@ -128,7 +131,7 @@ fun ProductDetailsScreen(
                                 )
                             }
                         }
-                        Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(6.dp).background(brandGradient))
+                        Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(6.dp).background(currentBrandGradient))
                     }
 
                     if (imagens.size > 1) {
@@ -139,7 +142,7 @@ fun ProductDetailsScreen(
                                 shape = CircleShape, color = Color.White, shadowElevation = 8.dp
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = mainColor)
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color(0xFF0E8FC6))
                                 }
                             }
                         }
@@ -151,7 +154,7 @@ fun ProductDetailsScreen(
                                 shape = CircleShape, color = Color.White, shadowElevation = 8.dp
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = mainColor)
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color(0xFF0E8FC6))
                                 }
                             }
                         }
@@ -162,7 +165,7 @@ fun ProductDetailsScreen(
                         ) {
                             Text(
                                 text = "${currentImageIndex + 1}/${imagens.size}",
-                                color = mainColor, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                                color = Color(0xFF0E8FC6), fontWeight = FontWeight.Bold, fontSize = 12.sp,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
@@ -174,23 +177,23 @@ fun ProductDetailsScreen(
                         shape = CircleShape, color = Color.White, shadowElevation = 8.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = mainColor)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF0E8FC6))
                         }
                     }
 
                     Row(modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 16.dp)) {
                         Surface(onClick = { }, modifier = Modifier.size(48.dp), shape = CircleShape, color = Color.White, shadowElevation = 8.dp) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Share, null, tint = mainColor) }
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Share, null, tint = Color(0xFF0E8FC6)) }
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Surface(onClick = { }, modifier = Modifier.size(48.dp), shape = CircleShape, color = Color.White, shadowElevation = 8.dp) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.FavoriteBorder, null, tint = mainColor) }
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.FavoriteBorder, null, tint = Color(0xFF0E8FC6)) }
                         }
                     }
                 }
 
                 // --- Product Info ---
-                Column(modifier = Modifier.background(Color.White).padding(24.dp)) {
+                Column(modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(24.dp)) {
                     Surface(color = mainColor.copy(alpha = 0.1f), shape = RoundedCornerShape(50)) {
                         Text(
                             text = product.categoria,
@@ -201,55 +204,55 @@ fun ProductDetailsScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(product.titulo, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(product.titulo, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
-                        Text(" ${product.nota} ", fontWeight = FontWeight.SemiBold)
-                        Text("• ${uiState.avaliacoesCount} Avaliações", color = Color.Gray)
+                        Text(" ${product.nota} ", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                        Text("• ${uiState.avaliacoesCount} Avaliações", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text("Anunciado por", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Anunciado por", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFF0F0F0)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         elevation = CardDefaults.cardElevation(2.dp),
                         modifier = Modifier.fillMaxWidth().clickable {
                             navController.navigate(Screen.PublicProfile.createRoute(product.donoId))
                         }
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray), contentAlignment = Alignment.Center) {
-                                Text(text = uiState.nomeDono.firstOrNull()?.toString() ?: "U", fontWeight = FontWeight.Bold, color = Color.White)
+                            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                                Text(text = uiState.nomeDono.firstOrNull()?.toString() ?: "U", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(uiState.nomeDono, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+                                Text(uiState.nomeDono, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 Text("Ver perfil", fontSize = 12.sp, color = mainColor)
                             }
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.LightGray)
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Sobre o produto", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Sobre o produto", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = product.descricao, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF5A5A5A), lineHeight = 24.sp)
+                    Text(text = product.descricao, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), lineHeight = 24.sp)
 
                     Spacer(modifier = Modifier.height(32.dp))
-                    Text("Avaliações do Item", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Avaliações do Item", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (reviewsList.isEmpty()) {
-                        Text("Nenhuma avaliação ainda.", color = Color.Gray, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                        Text("Nenhuma avaliação ainda.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                     } else {
                         reviewsList.forEach { review ->
                             ReviewProdutoItem(review)
@@ -261,12 +264,13 @@ fun ProductDetailsScreen(
             }
         }
 
-        // --- Dialogs ---
+        // --- Dialogs Adaptados ---
         if (showRentalConfirmationDialog) {
             AlertDialog(
                 onDismissRequest = { showRentalConfirmationDialog = false },
-                title = { Text(text = "Solicitar Aluguel?", fontWeight = FontWeight.Bold) },
-                text = { Text("Você deseja enviar uma solicitação de aluguel para ${uiState.nomeDono}? O chat será aberto para negociação.") },
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = { Text(text = "Solicitar Aluguel?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
+                text = { Text("Você deseja enviar uma solicitação de aluguel para ${uiState.nomeDono}? O chat será aberto para negociação.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)) },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -293,7 +297,7 @@ fun ProductDetailsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showRentalConfirmationDialog = false }) {
-                        Text("Cancelar", color = Color.Gray)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     }
                 }
             )
@@ -302,8 +306,9 @@ fun ProductDetailsScreen(
         if (showLoginRequiredDialog) {
             AlertDialog(
                 onDismissRequest = { showLoginRequiredDialog = false },
-                title = { Text("Login Necessário", fontWeight = FontWeight.Bold) },
-                text = { Text("Para alugar este produto, você precisa entrar na sua conta.") },
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = { Text("Login Necessário", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
+                text = { Text("Para alugar este produto, você precisa entrar na sua conta.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)) },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -321,7 +326,7 @@ fun ProductDetailsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showLoginRequiredDialog = false }) {
-                        Text("Cancelar", color = Color.Gray)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     }
                 }
             )
@@ -333,38 +338,40 @@ fun ProductDetailsScreen(
 fun ReviewProdutoItem(review: ReviewUI) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(review.authorName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(review.authorName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Row(modifier = Modifier.padding(end = 8.dp)) {
                         repeat(5) { index ->
-                            Icon(Icons.Default.Star, null, tint = if (index < review.rating) Color(0xFFFFB300) else Color(0xFFE0E0E0), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Star, null, tint = if (index < review.rating) Color(0xFFFFB300) else MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(16.dp))
                         }
                     }
-                    Text(review.date, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(review.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(review.comment, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF5A5A5A))
+            Text(review.comment, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
         }
     }
 }
 
 @Composable
 fun BottomRentBar(price: String, onRentClick: () -> Unit, gradient: Brush) {
-    Surface(shadowElevation = 20.dp, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
+    Surface(shadowElevation = 20.dp, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
         Box(modifier = Modifier.fillMaxWidth().background(gradient).clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).navigationBarsPadding(),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
+                    @Suppress("UNCHECKED_CAST")
                     Text("Valor: ", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                    @Suppress("UNCHECKED_CAST")
                     Text(price, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
                 }
                 Button(

@@ -7,11 +7,13 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavType
@@ -29,7 +31,7 @@ import com.pegai.app.ui.screens.login.LoginScreen
 import com.pegai.app.ui.screens.orders.OrdersScreen
 import com.pegai.app.ui.screens.profile.ProfileScreen
 import com.pegai.app.ui.screens.register.RegisterScreen
-import com.pegai.app.ui.theme.PegaíTheme
+import com.pegai.app.ui.theme.PegaiTheme
 import com.pegai.app.ui.screens.details.ProductDetailsScreen
 import com.pegai.app.ui.screens.chat.ChatDetailScreen
 import com.pegai.app.ui.screens.profile.PublicProfileScreen
@@ -42,7 +44,6 @@ class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         val splashScreen = installSplashScreen()
         var isReady = false
 
@@ -53,24 +54,16 @@ class MainActivity : ComponentActivity() {
             isReady = true
         }
 
-        // --- CONFIGURAÇÃO DA BARRA DE STATUS (EDGE-TO-EDGE) ---
         enableEdgeToEdge(
-            // .dark = Ícones BRANCOS (para fundos escuros/coloridos)
-            statusBarStyle = SystemBarStyle.dark(
-                AndroidColor.TRANSPARENT
-            ),
-            navigationBarStyle = SystemBarStyle.light(
-                AndroidColor.WHITE,
-                AndroidColor.WHITE
-            )
+            statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(AndroidColor.WHITE, AndroidColor.WHITE)
         )
 
         super.onCreate(savedInstanceState)
 
         setContent {
-            PegaíTheme {
+            PegaiTheme {
                 val navController = rememberNavController()
-
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
@@ -86,67 +79,42 @@ class MainActivity : ComponentActivity() {
                             FloatingBottomBar(navController = navController)
                         }
                     },
-                    containerColor = Color(0xFFF5F5F5)
+                    containerColor = MaterialTheme.colorScheme.background
                 ) { paddingValues ->
 
                     NavHost(
                         navController = navController,
                         startDestination = "home",
-                        // --- TRUQUE DO DEGRADÊ NA BARRA ---
-                        // Removemos o padding do TOPO para o conteúdo subir atrás da barra.
-                        // Mantemos apenas o padding de BAIXO para a BottomBar não cobrir o conteúdo.
                         modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
                     ) {
-                        // --- HOME ---
                         composable("home") {
-                            HomeScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
-                            )
+                            HomeScreen(navController = navController, authViewModel = authViewModel)
                         }
 
-                        // --- AUTH ---
                         composable("login") {
-                            LoginScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
-                            )
+                            LoginScreen(navController = navController, authViewModel = authViewModel)
                         }
 
                         composable("register") {
                             RegisterScreen(navController = navController)
                         }
 
-                        // --- TELAS PROTEGIDAS/ADAPTÁVEIS ---
                         composable("orders") {
-                            OrdersScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
-                            )
+                            OrdersScreen(navController = navController, authViewModel = authViewModel)
                         }
 
                         composable("add") {
-                            AddScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
-                            )
+                            AddScreen(navController = navController, authViewModel = authViewModel)
                         }
 
-                        composable("favorites") { FavoritesScreen()}
+                        composable("favorites") { FavoritesScreen() }
 
                         composable("profile") {
-                            ProfileScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
-                            )
+                            ProfileScreen(navController = navController, authViewModel = authViewModel)
                         }
 
-                        // --- FLUXO DE CHAT ---
                         composable("chat") {
-                            ChatListScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
-                            )
+                            ChatListScreen(navController = navController, authViewModel = authViewModel)
                         }
 
                         composable(
@@ -154,11 +122,7 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("productId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId")
-                            ProductDetailsScreen(
-                                navController = navController,
-                                productId = productId,
-                                authViewModel = authViewModel
-                            )
+                            ProductDetailsScreen(navController = navController, productId = productId, authViewModel = authViewModel)
                         }
 
                         composable(
@@ -174,11 +138,7 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("chatId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val chatId = backStackEntry.arguments?.getString("chatId")
-                            ChatDetailScreen(
-                                navController = navController,
-                                chatId = chatId,
-                                authViewModel = authViewModel
-                            )
+                            ChatDetailScreen(navController = navController, chatId = chatId, authViewModel = authViewModel)
                         }
                     }
                 }

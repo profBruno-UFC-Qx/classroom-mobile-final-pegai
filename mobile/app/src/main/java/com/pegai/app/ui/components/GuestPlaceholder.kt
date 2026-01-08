@@ -10,11 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pegai.app.ui.theme.brandGradient
 
 @Composable
 fun GuestPlaceholder(
@@ -23,97 +24,102 @@ fun GuestPlaceholder(
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit
 ) {
-    // Definição do Degradê (O mesmo usado no Header e BottomBar)
-    val mainGradient = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF0A5C8A), // Azul escuro
-            Color(0xFF0E8FC6), // Azul médio
-            Color(0xFF2ED1B2)  // Verde água
-        )
-    )
-
-    // Cor sólida para o texto do botão de criar conta (para garantir leitura)
-    val mainColor = Color(0xFF0E8FC6)
+    val dynamicGradient = brandGradient()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(dynamicGradient)
     ) {
-        Icon(
-            imageVector = Icons.Default.Lock,
-            contentDescription = null,
-            tint = Color(0xFFBDBDBD),
-            modifier = Modifier.size(90.dp)
-        )
+        Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF424242),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- BOTÃO ENTRAR (COM DEGRADÊ NO FUNDO) ---
-        Button(
-            onClick = onLoginClick,
-            // 1. Removemos a cor padrão e o padding interno do botão
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-            contentPadding = PaddingValues(),
-            shape = RoundedCornerShape(50.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
         ) {
-            // 2. Criamos uma Box interna com o Background Degradê
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(mainGradient),
-                contentAlignment = Alignment.Center
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "Entrar",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                    modifier = Modifier.size(110.dp)
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 24.sp
+                )
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                Button(
+                    onClick = onLoginClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(dynamicGradient),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Entrar",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = onRegisterClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    border = BorderStroke(2.dp, dynamicGradient),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "Criar Conta",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- BOTÃO CRIAR CONTA (COM DEGRADÊ NA BORDA) ---
-        OutlinedButton(
-            onClick = onRegisterClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            // Passamos o Brush (degradê) para o BorderStroke
-            border = BorderStroke(2.dp, mainGradient),
-            shape = RoundedCornerShape(50.dp)
-        ) {
-            Text(
-                text = "Criar Conta",
-                color = mainColor, // Texto azul sólido
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }

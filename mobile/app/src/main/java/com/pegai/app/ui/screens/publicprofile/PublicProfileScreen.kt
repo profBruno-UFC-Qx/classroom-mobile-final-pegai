@@ -32,6 +32,8 @@ import coil.compose.AsyncImage
 import com.pegai.app.data.data.utils.formatarTempo
 import com.pegai.app.model.Product
 import com.pegai.app.model.UserAvaliacao
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.publicprofile.PublicProfileViewModel
 
 @Composable
@@ -48,13 +50,11 @@ fun PublicProfileScreen(
         viewModel.carregarPerfil(userId)
     }
 
-    val mainGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF0A5C8A), Color(0xFF0E8FC6), Color(0xFF2ED1B2))
-    )
-    val mainColor = Color(0xFF0E8FC6)
+    val currentBrandGradient = brandGradient()
+    val mainColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
-        containerColor = Color(0xFFF5F5F5),
+        containerColor = MaterialTheme.colorScheme.background, // Dinâmico
         contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
 
@@ -64,7 +64,7 @@ fun PublicProfileScreen(
             }
         } else if (uiState.user == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Usuário não encontrado.", color = Color.Gray)
+                Text("Usuário não encontrado.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         } else {
             Column(
@@ -79,7 +79,7 @@ fun PublicProfileScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
-                            .background(mainGradient)
+                            .background(currentBrandGradient)
                     )
 
                     Column(
@@ -107,7 +107,7 @@ fun PublicProfileScreen(
                                 )
                             } else {
                                 Box(
-                                    modifier = Modifier.fillMaxSize().background(Color(0xFFE0E0E0)),
+                                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -142,7 +142,7 @@ fun PublicProfileScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Voltar",
-                            tint = mainColor
+                            tint = Color(0xFF0E8FC6) // Mantido para contraste no botão branco
                         )
                     }
                 }
@@ -178,10 +178,10 @@ fun PublicProfileScreen(
                 // --- ANÚNCIOS ---
                 if (uiState.produtos.isNotEmpty()) {
                     Text(
-                        "Anúncios Ativos",
+                        text = "Anúncios Ativos",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF333333),
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
 
@@ -199,10 +199,10 @@ fun PublicProfileScreen(
                 // --- AVALIAÇÕES ---
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "Avaliações",
+                        text = "Avaliações",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF333333),
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
 
@@ -221,7 +221,7 @@ fun PublicProfileScreen(
                                 )
                             }
                         },
-                        divider = { HorizontalDivider(color = Color(0xFFEEEEEE)) }
+                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
                     ) {
                         reviewTabs.forEachIndexed { index, title ->
                             Tab(
@@ -231,7 +231,8 @@ fun PublicProfileScreen(
                                     Text(
                                         text = title,
                                         fontWeight = if (selectedReviewTab == index) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 14.sp
+                                        fontSize = 14.sp,
+                                        color = if (selectedReviewTab == index) mainColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                     )
                                 }
                             )
@@ -254,7 +255,7 @@ fun PublicProfileScreen(
                         ) {
                             Text(
                                 text = "Nenhuma avaliação como ${if (selectedReviewTab == 0) "locador" else "locatário"} ainda.",
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 fontSize = 14.sp
                             )
                         }
@@ -285,9 +286,9 @@ fun StatusCardPublic(
     mainColor: Color
 ) {
     Card(
-        modifier = modifier.height(110.dp),
+        modifier = modifier.height(135.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(
@@ -295,11 +296,30 @@ fun StatusCardPublic(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = mainColor, modifier = Modifier.size(26.dp))
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(text = String.format("%.1f ★", nota), fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Black)
-            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.Gray)
-            Text(text = "($total avaliações)", fontSize = 11.sp, color = Color.LightGray)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = mainColor,
+                modifier = Modifier.size(26.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = String.format("%.1f ★", nota),
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Text(
+                text = "($total avaliações)",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            )
         }
     }
 }
@@ -308,7 +328,7 @@ fun StatusCardPublic(
 fun ProductCardSmall(produto: Product, mainColor: Color) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.width(150.dp)
     ) {
@@ -317,10 +337,10 @@ fun ProductCardSmall(produto: Product, mainColor: Color) {
                 model = produto.imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().height(110.dp).background(Color(0xFFF0F0F0))
+                modifier = Modifier.fillMaxWidth().height(110.dp).background(getFieldColor())
             )
             Column(modifier = Modifier.padding(10.dp)) {
-                Text(produto.titulo, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF333333))
+                Text(produto.titulo, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("R$ ${produto.preco}/dia", color = mainColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
@@ -332,7 +352,7 @@ fun ProductCardSmall(produto: Product, mainColor: Color) {
 fun ReviewCardReal(avaliacao: UserAvaliacao) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -346,13 +366,13 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
                 )
             } else {
                 Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = avaliacao.autorNome.take(1).uppercase(),
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -365,8 +385,8 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(avaliacao.autorNome, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF333333))
-                    Text(formatarTempo(avaliacao.data), fontSize = 11.sp, color = Color.Gray)
+                    Text(avaliacao.autorNome, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(formatarTempo(avaliacao.data), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
 
                 Row(modifier = Modifier.padding(vertical = 4.dp)) {
@@ -374,7 +394,7 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = if (index < avaliacao.nota) Color(0xFFFFC107) else Color(0xFFE0E0E0),
+                            tint = if (index < avaliacao.nota) Color(0xFFFFC107) else MaterialTheme.colorScheme.outlineVariant,
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -383,7 +403,7 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
                 Text(
                     text = avaliacao.comentario,
                     fontSize = 13.sp,
-                    color = Color(0xFF555555),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     lineHeight = 18.sp
                 )
             }

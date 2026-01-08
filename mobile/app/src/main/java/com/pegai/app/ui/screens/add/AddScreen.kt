@@ -38,6 +38,8 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.model.Product
 import com.pegai.app.ui.components.GuestPlaceholder
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.add.AddProductUiState
 import com.pegai.app.ui.viewmodel.add.AddProductViewModel
@@ -78,14 +80,10 @@ fun AddProductContent(
     val snackbarHostState = remember { SnackbarHostState() }
     var tabIndex by remember { mutableIntStateOf(0) }
 
-    val azulPrimario = Color(0xFF0E8FC6)
+    val dynamicGradient = brandGradient()
     val tabs = listOf(
         "Novo Anúncio" to Icons.Default.AddCircleOutline,
         "Meus Produtos" to Icons.Default.Inventory2
-    )
-
-    val brandGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2))
     )
 
     LaunchedEffect(uiState.mensagemSucesso, uiState.erro) {
@@ -102,7 +100,7 @@ fun AddProductContent(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFFFBFBFB),
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
 
@@ -111,8 +109,8 @@ fun AddProductContent(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // --- Header Premium ---
-            Column(modifier = Modifier.fillMaxWidth().background(brandGradient)) {
+            // --- Header Premium Adaptado ---
+            Column(modifier = Modifier.fillMaxWidth().background(dynamicGradient)) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                     Text("Gerenciar Anúncios", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -120,22 +118,22 @@ fun AddProductContent(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = Color(0xFFFBFBFB),
+                    color = MaterialTheme.colorScheme.background,
                     shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
                 ) {
                     TabRow(
                         selectedTabIndex = tabIndex,
                         containerColor = Color.Transparent,
-                        contentColor = azulPrimario,
+                        contentColor = MaterialTheme.colorScheme.primary,
                         indicator = { tabPositions ->
-                            Box(Modifier.tabIndicatorOffset(tabPositions[tabIndex]).height(3.dp).padding(horizontal = 32.dp).background(brandGradient, CircleShape))
+                            Box(Modifier.tabIndicatorOffset(tabPositions[tabIndex]).height(3.dp).padding(horizontal = 32.dp).background(dynamicGradient, CircleShape))
                         },
                         divider = {},
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         tabs.forEachIndexed { index, (title, icon) ->
                             val isSelected = tabIndex == index
-                            val contentColor = if (isSelected) azulPrimario else Color.Gray.copy(alpha = 0.7f)
+                            val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
 
                             Tab(
                                 selected = isSelected,
@@ -161,7 +159,7 @@ fun AddProductContent(
                     Column(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).padding(top = 16.dp, bottom = 100.dp)
                     ) {
-                        Text("Detalhes do Item", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF333333), modifier = Modifier.padding(bottom = 16.dp))
+                        Text("Detalhes do Item", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 16.dp))
 
                         CamposDoFormulario(viewModel, uiState)
 
@@ -174,7 +172,7 @@ fun AddProductContent(
                             contentPadding = PaddingValues(0.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().background(brandGradient), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxSize().background(dynamicGradient), contentAlignment = Alignment.Center) {
                                 if (uiState.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                                 else Text("Publicar Anúncio", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                             }
@@ -194,18 +192,18 @@ fun AddProductContent(
     if (uiState.mostrarModalEdicao) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.fecharModal() },
-            containerColor = Color.White,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.LightGray) }
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)) }
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).padding(bottom = 40.dp)) {
-                Text("Editar Produto", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 24.dp))
+                Text("Editar Produto", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 24.dp))
                 CamposDoFormulario(viewModel, uiState)
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(
                     onClick = { viewModel.salvarProduto() },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = azulPrimario)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Salvar Alterações", fontWeight = FontWeight.Bold)
                 }
@@ -221,10 +219,11 @@ fun AddProductContent(
     if (uiState.mostrarDialogoExclusao) {
         AlertDialog(
             onDismissRequest = { viewModel.cancelarExclusao() },
-            title = { Text("Excluir Anúncio?") },
-            text = { Text("Essa ação removerá o produto permanentemente da plataforma.") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Excluir Anúncio?", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Essa ação removerá o produto permanentemente da plataforma.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)) },
             confirmButton = { Button(onClick = { viewModel.confirmarExclusao() }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) { Text("Excluir") } },
-            dismissButton = { TextButton(onClick = { viewModel.cancelarExclusao() }) { Text("Voltar", color = Color.Gray) } }
+            dismissButton = { TextButton(onClick = { viewModel.cancelarExclusao() }) { Text("Voltar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) } }
         )
     }
 }
@@ -237,23 +236,23 @@ fun CamposDoFormulario(viewModel: AddProductViewModel, uiState: AddProductUiStat
         onResult = { uris -> viewModel.onFotosSelecionadas(uris) }
     )
 
-    val bgField = Color(0xFFF2F4F7)
+    val currentFieldColor = getFieldColor()
 
-    // Seletor de Fotos Premium
+    // Seletor de Fotos Adaptado
     Box(
-        modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(20.dp)).background(bgField).border(BorderStroke(1.dp, Color(0xFFE4E7EC)), RoundedCornerShape(20.dp)).clickable {
+        modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(20.dp)).background(currentFieldColor).border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(20.dp)).clickable {
             photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
         contentAlignment = Alignment.Center
     ) {
         if (uiState.imagensSelecionadas.isEmpty()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(modifier = Modifier.size(48.dp), shape = CircleShape, color = Color.White, shadowElevation = 2.dp) {
-                    Icon(Icons.Default.AddPhotoAlternate, null, tint = Color(0xFF0E8FC6), modifier = Modifier.padding(12.dp))
+                Surface(modifier = Modifier.size(48.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+                    Icon(Icons.Default.AddPhotoAlternate, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(12.dp))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Adicionar fotos do item", fontWeight = FontWeight.SemiBold, color = Color(0xFF475467), fontSize = 14.sp)
-                Text("Até 5 fotos em alta qualidade", color = Color.Gray, fontSize = 12.sp)
+                Text("Adicionar fotos do item", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text("Até 5 fotos em alta qualidade", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), fontSize = 12.sp)
             }
         } else {
             LazyRow(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -275,27 +274,24 @@ fun CamposDoFormulario(viewModel: AddProductViewModel, uiState: AddProductUiStat
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    // Título
     PremiumTextField(value = uiState.titulo, onValueChange = { viewModel.onTituloChange(it) }, label = "Título do anúncio", placeholder = "Ex: Câmera Canon T7i", icon = Icons.Default.Title)
 
     Spacer(modifier = Modifier.height(16.dp))
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Preço
         Box(modifier = Modifier.weight(1f)) {
             PremiumTextField(value = uiState.preco, onValueChange = { viewModel.onPrecoChange(it) }, label = "Preço/Dia", placeholder = "0,00", icon = Icons.Default.Payments, keyboardType = KeyboardType.Number)
         }
 
-        // Categoria
         var expanded by remember { mutableStateOf(false) }
         Box(modifier = Modifier.weight(1.2f)) {
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 PremiumTextField(value = uiState.categoria, onValueChange = {}, label = "Categoria", placeholder = "Selecionar", icon = Icons.Default.Category, readOnly = true, modifier = Modifier.menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Color.White).border(1.dp, Color(0xFFE4E7EC), RoundedCornerShape(12.dp))) {
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(MaterialTheme.colorScheme.surface).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))) {
                     viewModel.categoriasDisponiveis.forEach { cat ->
                         DropdownMenuItem(
-                            text = { Text(cat.nomeExibicao, fontSize = 14.sp) },
-                            leadingIcon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp), tint = Color(0xFF0E8FC6)) },
+                            text = { Text(cat.nomeExibicao, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface) },
+                            leadingIcon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
                             onClick = { viewModel.onCategoriaChange(cat.nomeExibicao); expanded = false }
                         )
                     }
@@ -306,7 +302,6 @@ fun CamposDoFormulario(viewModel: AddProductViewModel, uiState: AddProductUiStat
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    // Descrição
     PremiumTextField(value = uiState.descricao, onValueChange = { viewModel.onDescricaoChange(it) }, label = "Descrição", placeholder = "Conte detalhes sobre o estado do item...", icon = Icons.Default.Description, singleLine = false, modifier = Modifier.height(120.dp))
 }
 
@@ -324,23 +319,24 @@ fun PremiumTextField(
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(text = label, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF344054), modifier = Modifier.padding(bottom = 6.dp, start = 4.dp))
+        Text(text = label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 6.dp, start = 4.dp))
         TextField(
             value = value,
             onValueChange = onValueChange,
             readOnly = readOnly,
             placeholder = { Text(placeholder, fontSize = 14.sp, color = Color.Gray) },
-            leadingIcon = { Icon(icon, null, modifier = Modifier.size(20.dp), tint = Color(0xFF0E8FC6)) },
+            leadingIcon = { Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary) },
             trailingIcon = trailingIcon,
             singleLine = singleLine,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFF2F4F7),
-                unfocusedContainerColor = Color(0xFFF2F4F7),
-                disabledContainerColor = Color(0xFFF2F4F7),
-                focusedIndicatorColor = Color(0xFF0E8FC6),
-                unfocusedIndicatorColor = Color.Transparent
+                focusedContainerColor = getFieldColor(),
+                unfocusedContainerColor = getFieldColor(),
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             )
         )
     }
@@ -351,8 +347,8 @@ fun ListaMeusProdutos(produtos: List<Product>, onManage: (Product) -> Unit, bott
     if (produtos.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 100.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.Inventory, null, tint = Color(0xFFEAECF0), modifier = Modifier.size(100.dp))
-                Text("Nenhum anúncio ativo", fontWeight = FontWeight.Bold, color = Color.Gray)
+                Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), modifier = Modifier.size(100.dp))
+                Text("Nenhum anúncio ativo", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
             }
         }
     } else {
@@ -367,22 +363,22 @@ fun ListaMeusProdutos(produtos: List<Product>, onManage: (Product) -> Unit, bott
 fun MeuProdutoCard(produto: Product, onManage: (Product) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onManage(produto) },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(model = produto.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(70.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF2F4F7)))
+            AsyncImage(model = produto.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(70.dp).clip(RoundedCornerShape(12.dp)).background(getFieldColor()))
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(produto.titulo, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
-                Text("R$ ${produto.preco}/dia", color = Color(0xFF0E8FC6), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-                Surface(color = Color(0xFFF2F4F7), shape = RoundedCornerShape(4.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    Text(produto.categoria, fontSize = 10.sp, color = Color.Gray, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Text(produto.titulo, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                Text("R$ ${produto.preco}/dia", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                Surface(color = getFieldColor(), shape = RoundedCornerShape(4.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    Text(produto.categoria, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                 }
             }
-            IconButton(onClick = { onManage(produto) }, modifier = Modifier.background(Color(0xFFF9FAFB), CircleShape)) {
-                Icon(Icons.Default.Settings, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+            IconButton(onClick = { onManage(produto) }, modifier = Modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), CircleShape)) {
+                Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
             }
         }
     }

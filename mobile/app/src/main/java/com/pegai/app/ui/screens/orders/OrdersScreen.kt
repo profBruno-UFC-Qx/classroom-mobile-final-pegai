@@ -34,6 +34,8 @@ import com.pegai.app.model.Rental
 import com.pegai.app.model.RentalStatus
 import com.pegai.app.model.User
 import com.pegai.app.ui.navigation.Screen
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.orders.OrdersViewModel
 
@@ -47,39 +49,39 @@ fun OrdersScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val azulPrimario = Color(0xFF0E8FC6)
+    val azulPrimario = MaterialTheme.colorScheme.primary
 
     val tabs = listOf(
         "Em Andamento" to Icons.Default.Sync,
         "Histórico" to Icons.Default.History
     )
-    val brandGradient = Brush.horizontalGradient(colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
+    val currentBrandGradient = brandGradient()
 
     LaunchedEffect(authUser) {
         authUser?.let { viewModel.carregarAlugueis(it.uid) }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // --- Header ---
-        Column(modifier = Modifier.fillMaxWidth().background(brandGradient)) {
+        Column(modifier = Modifier.fillMaxWidth().background(currentBrandGradient)) {
             Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                 Text(text = "Meus Aluguéis", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
             }
-            Surface(modifier = Modifier.fillMaxWidth(), color = Color(0xFFF5F5F5), shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = Color.White,
+                    containerColor = Color.Transparent,
                     contentColor = azulPrimario,
                     indicator = { tabPositions ->
-                        Box(Modifier.tabIndicatorOffset(tabPositions[selectedTab]).height(3.dp).background(brandGradient))
+                        Box(Modifier.tabIndicatorOffset(tabPositions[selectedTab]).height(3.dp).background(currentBrandGradient))
                     },
-                    divider = { HorizontalDivider(color = Color(0xFFEEEEEE)) },
+                    divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     tabs.forEachIndexed { index, (title, icon) ->
                         val isSelected = selectedTab == index
-                        val contentColor = if (isSelected) azulPrimario else Color.Gray
+                        val contentColor = if (isSelected) azulPrimario else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
 
                         Tab(
                             selected = isSelected,
@@ -114,7 +116,7 @@ fun OrdersScreen(
 
             if (lista.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Nenhum aluguel encontrado.", color = Color.Gray)
+                    Text("Nenhum aluguel encontrado.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -142,16 +144,16 @@ fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
     val nomeLocadorDisplay = if (isLocador) "Você" else rental.locadorNome.split(" ").firstOrNull() ?: "Dono"
     val nomeLocatarioDisplay = if (!isLocador) "Você" else rental.locatarioNome.split(" ").firstOrNull() ?: "Cliente"
 
-    val brandGradient = Brush.horizontalGradient(colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
+    val currentBrandGradient = brandGradient()
 
     Column(modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
         Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp), shadowElevation = 4.dp) {
-            Box(modifier = Modifier.fillMaxWidth().background(brandGradient).padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Box(modifier = Modifier.fillMaxWidth().background(currentBrandGradient).padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(horizontalAlignment = Alignment.Start) {
                         Text(text = "Dono", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            TicketAvatar(isMe = isLocador, userPhoto = currentUser?.fotoUrl, userName = nomeLocadorDisplay, color = Color(0xFF0A5C8A))
+                            TicketAvatar(isMe = isLocador, userPhoto = currentUser?.fotoUrl, userName = nomeLocadorDisplay, color = Color.White)
                             Spacer(Modifier.width(8.dp))
                             Text(text = nomeLocadorDisplay, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 100.dp))
                         }
@@ -162,13 +164,13 @@ fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(text = nomeLocatarioDisplay, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 100.dp))
                             Spacer(Modifier.width(8.dp))
-                            TicketAvatar(isMe = !isLocador, userPhoto = currentUser?.fotoUrl, userName = nomeLocatarioDisplay, color = Color(0xFF2ED1B2))
+                            TicketAvatar(isMe = !isLocador, userPhoto = currentUser?.fotoUrl, userName = nomeLocatarioDisplay, color = Color.White)
                         }
                     }
                 }
             }
         }
-        Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp), color = Color.White, shadowElevation = 4.dp) {
+        Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
             RentalCardBody(rental)
         }
     }
@@ -176,8 +178,8 @@ fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
 
 @Composable
 fun RentalCardBody(rental: Rental) {
-    val mainColor = Color(0xFF0E8FC6)
-    val errorColor = Color(0xFFD32F2F)
+    val mainColor = MaterialTheme.colorScheme.primary
+    val errorColor = MaterialTheme.colorScheme.error
     val successColor = Color(0xFF2E7D32)
     val warningColor = Color(0xFFF57C00)
 
@@ -185,7 +187,7 @@ fun RentalCardBody(rental: Rental) {
         RentalStatus.COMPLETED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Total Pago", "Concluído", Icons.Default.CheckCircle, successColor)
         RentalStatus.CANCELLED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Cancelado", "Aluguel Cancelado", Icons.Default.Cancel, errorColor)
         RentalStatus.DECLINED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Recusado", "Solicitação Recusada", Icons.Default.Cancel, errorColor)
-        RentalStatus.PENDING -> listOf("R$ --", "Aguardando", "Solicitação Enviada", Icons.Default.HourglassEmpty, Color.Gray)
+        RentalStatus.PENDING -> listOf("R$ --", "Aguardando", "Solicitação Enviada", Icons.Default.HourglassEmpty, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
         RentalStatus.APPROVED_WAITING_DATES -> listOf("R$ --", "Aguardando", "Dono definindo datas", Icons.Default.DateRange, mainColor)
         RentalStatus.DATES_PROPOSED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Proposta", "Aguardando Aceite", Icons.Default.EditCalendar, mainColor)
         RentalStatus.AWAITING_DELIVERY -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Combinado", "Aguardando Entrega", Icons.Default.LocalShipping, warningColor)
@@ -196,9 +198,9 @@ fun RentalCardBody(rental: Rental) {
 
     Column {
         Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-            AsyncImage(model = rental.productImageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().background(Color(0xFFF0F0F0)))
+            AsyncImage(model = rental.productImageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().background(getFieldColor()))
             Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-                Surface(color = Color.White, shape = RoundedCornerShape(50), shadowElevation = 2.dp) {
+                Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), shape = RoundedCornerShape(50), shadowElevation = 2.dp) {
                     StatusChip(statusLabel = rental.status.label, color = rental.status.color)
                 }
             }
@@ -213,9 +215,9 @@ fun RentalCardBody(rental: Rental) {
         }
 
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = rental.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF333333), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = rental.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = Color(0xFFF0F0F0))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,7 +226,7 @@ fun RentalCardBody(rental: Rental) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     @Suppress("UNCHECKED_CAST")
-                    Text(text = "Status da Reserva", fontSize = 10.sp, color = Color.Gray)
+                    Text(text = "Status da Reserva", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     @Suppress("UNCHECKED_CAST")
                     Text(text = textoStatus as String, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = corStatus as Color)
                 }
@@ -245,14 +247,14 @@ fun TicketAvatar(isMe: Boolean, userPhoto: String?, userName: String, color: Col
             .size(44.dp)
             .scale(if(isMe) scale else 1f)
             .clip(CircleShape)
-            .background(Color.White)
-            .then(if(isMe) Modifier.border(4.dp, Color.White, CircleShape) else Modifier),
+            .background(Color.White.copy(alpha = 0.2f)) // Avatar fundo translúcido no ticket
+            .then(if(isMe) Modifier.border(2.dp, Color.White, CircleShape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (isMe && !userPhoto.isNullOrEmpty()) {
+        if (!userPhoto.isNullOrEmpty()) {
             AsyncImage(model = userPhoto, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape))
         } else {
-            Text(text = if (isMe) "EU" else userName.take(1).uppercase(), color = if (isMe) Color(0xFF0A5C8A) else color, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+            Text(text = if (isMe) "EU" else userName.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
         }
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,8 +38,12 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.R
 import com.pegai.app.ui.components.GuestPlaceholder
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.profile.ProfileViewModel
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.nativeCanvas
 
 @Composable
 fun ProfileScreen(
@@ -57,9 +62,8 @@ fun ProfileScreen(
         onResult = { uri -> uri?.let { viewModel.atualizarFotoDePerfil(it) } }
     )
 
-    val mainGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF0A5C8A), Color(0xFF0E8FC6), Color(0xFF2ED1B2))
-    )
+    // Usando o gradiente dinâmico do tema
+    val mainGradient = brandGradient()
 
     LaunchedEffect(authUser) {
         viewModel.carregarDadosUsuario(authUser)
@@ -77,7 +81,7 @@ fun ProfileScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFFF5F5F5))
+                    .background(MaterialTheme.colorScheme.background) // Fundo dinâmico
                     .verticalScroll(rememberScrollState())
             ) {
                 // --- CABEÇALHO ---
@@ -142,7 +146,7 @@ fun ProfileScreen(
                                     ) {
                                         if (uiState.isLoading) {
                                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                CircularProgressIndicator(modifier = Modifier.size(30.dp), color = Color(0xFF0E8FC6))
+                                                CircularProgressIndicator(modifier = Modifier.size(30.dp), color = MaterialTheme.colorScheme.primary)
                                             }
                                         } else if (uiState.user?.fotoUrl?.isNotEmpty() == true) {
                                             AsyncImage(
@@ -152,12 +156,12 @@ fun ProfileScreen(
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         } else {
-                                            Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                                            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
                                                 Text(
                                                     text = uiState.user?.nome?.first()?.toString() ?: "U",
                                                     fontSize = 40.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF0E8FC6)
+                                                    color = MaterialTheme.colorScheme.primary
                                                 )
                                             }
                                         }
@@ -168,7 +172,7 @@ fun ProfileScreen(
                                             photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                                         },
                                         shape = CircleShape,
-                                        color = Color(0xFF0E8FC6),
+                                        color = MaterialTheme.colorScheme.primary,
                                         border = BorderStroke(2.dp, Color.White),
                                         shadowElevation = 4.dp
                                     ) {
@@ -270,65 +274,130 @@ fun ProfileScreen(
             }
 
             // --- DIÁLOGO PIX ---
+            // --- DIÁLOGO PIX (ESTILO SÓLIDO E MODERNO) ---
             if (showPixManagerDialog) {
                 Dialog(onDismissRequest = { showPixManagerDialog = false }) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza Escuro no Dark
+                        tonalElevation = 8.dp,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // Header do Modal
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_qrcode_pix),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
                             Text(
-                                "Minha Chave Pix",
+                                text = "Recebimento via PIX",
                                 style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0E8FC6)
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Edite sua chave abaixo para gerar o QR Code.", color = Color.Gray, fontSize = 14.sp, textAlign = TextAlign.Center)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            OutlinedTextField(
-                                value = tempChavePix,
-                                onValueChange = { tempChavePix = it },
-                                label = { Text("Chave (CPF, Email, Aleatória)") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF0E8FC6), focusedLabelColor = Color(0xFF0E8FC6))
+
+                            Text(
+                                text = "Sua chave será usada para gerar o QR Code de pagamento dos seus aluguéis.",
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                fontSize = 13.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 8.dp)
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Campo de Chave
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = "Sua Chave Pix",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                                )
+                                TextField(
+                                    value = tempChavePix,
+                                    onValueChange = { tempChavePix = it },
+                                    placeholder = { Text("CPF, e-mail ou chave aleatória") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = getFieldColor(),
+                                        unfocusedContainerColor = getFieldColor(),
+                                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
                             Button(
                                 onClick = {
                                     viewModel.atualizarChaveTemp(tempChavePix)
                                     viewModel.salvarChavePix()
                                     showPixManagerDialog = false
                                 },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0E8FC6)),
-                                shape = RoundedCornerShape(8.dp)
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
-                                Text("Salvar e Atualizar")
+                                Text("Atualizar Chave", fontWeight = FontWeight.Bold)
                             }
 
+                            // Área do QR Code
                             if (uiState.chavePix.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                HorizontalDivider()
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text("Seu QR Code atual:", fontWeight = FontWeight.Bold, color = Color.DarkGray)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                AsyncImage(
-                                    model = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${uiState.chavePix}",
-                                    contentDescription = "QR Code Pix",
-                                    modifier = Modifier.size(180.dp).border(1.dp, Color.LightGray, RoundedCornerShape(8.dp)).padding(8.dp)
+                                Spacer(modifier = Modifier.height(32.dp))
+
+                                Text(
+                                    text = "QR Code de Recebimento",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // Card do QR Code com fundo branco sólido para leitura
+                                Surface(
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .shadow(4.dp, RoundedCornerShape(20.dp)),
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(20.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(16.dp)) {
+                                        AsyncImage(
+                                            model = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${uiState.chavePix}",
+                                            contentDescription = "QR Code Pix",
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
                             }
-                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
                             TextButton(onClick = { showPixManagerDialog = false }) {
-                                Text("Fechar Janela", color = Color.Gray)
+                                Text("Agora não", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                             }
                         }
                     }
@@ -349,7 +418,7 @@ fun StatusCard(
     Card(
         modifier = modifier.height(125.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
@@ -357,12 +426,12 @@ fun StatusCard(
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(icon, contentDescription = null, tint = Color(0xFF0E8FC6), modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF333333), textAlign = TextAlign.Center, maxLines = 1)
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF666666), textAlign = TextAlign.Center, maxLines = 1)
-                Text(subtext, fontSize = 11.sp, color = Color(0xFF999999), textAlign = TextAlign.Center, lineHeight = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, maxLines = 1)
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), textAlign = TextAlign.Center, maxLines = 1)
+                Text(subtext, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), textAlign = TextAlign.Center, lineHeight = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -373,16 +442,16 @@ fun ProfileMenuItem(icon: ImageVector, text: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 1.dp
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFE1F5FE)), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Color(0xFF0E8FC6))
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242), modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
+            Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
         }
     }
 }
