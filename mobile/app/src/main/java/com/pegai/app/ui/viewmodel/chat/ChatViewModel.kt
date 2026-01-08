@@ -1,0 +1,186 @@
+package com.pegai.app.ui.viewmodel.chat
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.pegai.app.model.ChatMessage
+import com.pegai.app.model.RentalStatus
+import com.pegai.app.repository.ChatRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
+
+class ChatViewModel : ViewModel() {
+
+    private val repository = ChatRepository()
+    private val _uiState = MutableStateFlow(ChatUiState())
+    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+
+    private var currentChatId: String? = null
+    private var jobsEscuta: Job? = null
+
+    fun inicializarChat(chatId: String, userId: String) {
+        if (currentChatId == chatId && _uiState.value.currentUserId == userId) return
+
+        currentChatId = chatId
+        jobsEscuta?.cancel()
+
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                currentUserId = userId,
+                messages = emptyList(),
+                chatRoom = null,
+                otherUserName = "",
+                otherUserId = ""
+            )
+        }
+
+        jobsEscuta = viewModelScope.launch {
+            launch {
+                repository.getChatRoom(chatId).collect { chatRoom ->
+                    var nomeOutro = "Usuário"
+                    var fotoOutro = ""
+                    var idOutro = ""
+
+                    if (chatRoom != null) {
+                        val otherId = if (chatRoom.ownerId == userId) chatRoom.renterId else chatRoom.ownerId
+                        idOutro = otherId
+
+                        val dados = repository.getUserData(otherId)
+                        nomeOutro = dados.first
+                        fotoOutro = dados.second
+                    }
+
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            chatRoom = chatRoom,
+                            otherUserName = nomeOutro,
+                            otherUserPhoto = fotoOutro,
+                            otherUserId = idOutro
+                        )
+                    }
+                }
+            }
+
+            launch {
+                repository.getMessages(chatId).collect { msgs ->
+                    _uiState.update { state -> state.copy(messages = msgs) }
+                }
+            }
+        }
+    }
+
+    fun enviarMensagem(texto: String) {
+        val chatId = currentChatId ?: return
+        val user = _uiState.value.currentUserId
+
+        val novaMensagem = ChatMessage(
+            text = texto,
+            senderId = user,
+            timestamp = System.currentTimeMillis()
+        )
+
+        viewModelScope.launch {
+            repository.sendMessage(chatId, novaMensagem)
+            repository.updateLastMessage(chatId, texto)
+        }
+    }
+
+    // --- Rental Workflow State Machine ---
+
+    fun aceitarSolicitacao() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.APPROVED_WAITING_DATES.name)
+                enviarMensagem("Solicitação aceita! Vou definir as datas agora.")
+            }
+        }
+    }
+
+    fun recusarSolicitacao() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.DECLINED.name)
+                enviarMensagem("Infelizmente não poderei aceitar a solicitação agora.")
+            }
+        }
+    }
+
+    fun definirDatas(start: String, end: String, total: Double) {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateContract(id, start, end, total)
+                repository.updateStatus(id, RentalStatus.DATES_PROPOSED.name)
+                enviarMensagem("Proposta de aluguel: De $start até $end. Valor total: R$ ${String.format("%.2f", total)}.")
+            }
+        }
+    }
+
+    fun aceitarDatas() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.AWAITING_DELIVERY.name)
+                enviarMensagem("Datas e valor combinados! Aguardando entrega.")
+            }
+        }
+    }
+
+    fun confirmarEntregaDono() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.DELIVERY_CONFIRMED.name)
+                enviarMensagem("O produto foi entregue. Aguardando confirmação de recebimento.")
+            }
+        }
+    }
+
+    fun confirmarRecebimentoLocatario() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.ONGOING.name)
+                enviarMensagem("Produto recebido! O aluguel começou.")
+            }
+        }
+    }
+
+    fun sinalizarDevolucao() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.RETURN_SIGNALED.name)
+                enviarMensagem("Vou devolver o produto. Vamos combinar o encontro.")
+            }
+        }
+    }
+
+    fun confirmarDevolucaoFinal() {
+        currentChatId?.let { id ->
+            viewModelScope.launch {
+                repository.updateStatus(id, RentalStatus.COMPLETED.name)
+                enviarMensagem("Produto recebido de volta. Aluguel finalizado com sucesso!")
+            }
+        }
+    }
+
+    // --- Calculations ---
+
+    fun simularValoresAluguel(startMillis: Long?, endMillis: Long?, pricePerDay: Double) {
+        if (startMillis != null && endMillis != null) {
+            val diff = endMillis - startMillis
+            val dias = TimeUnit.MILLISECONDS.toDays(diff).coerceAtLeast(1).toInt()
+            val total = dias * pricePerDay
+
+            _uiState.update {
+                it.copy(diasCalculados = dias, totalCalculado = total)
+            }
+        } else {
+            _uiState.update {
+                it.copy(diasCalculados = 0, totalCalculado = 0.0)
+            }
+        }
+    }
+}

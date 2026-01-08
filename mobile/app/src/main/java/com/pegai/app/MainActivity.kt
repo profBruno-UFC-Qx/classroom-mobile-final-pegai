@@ -174,7 +174,11 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("chatId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val chatId = backStackEntry.arguments?.getString("chatId")
-                            ChatDetailScreen(navController = navController, chatId = chatId)
+                            ChatDetailScreen(
+                                navController = navController,
+                                chatId = chatId,
+                                authViewModel = authViewModel
+                            )
                         }
                     }
                 }

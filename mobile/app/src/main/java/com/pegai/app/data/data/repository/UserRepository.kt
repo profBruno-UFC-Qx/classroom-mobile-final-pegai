@@ -8,12 +8,10 @@ import com.pegai.app.model.UserAvaliacao
 import kotlinx.coroutines.tasks.await
 
 object UserRepository {
-    private val cacheUsuarios = mutableMapOf<String, User>()
     private val cacheNomes = mutableMapOf<String, String>()
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    // --- FUNÇÃO PARA PEGAR O NOME  ---
     suspend fun getNomeUsuario(userId: String): String {
         return cacheNomes[userId] ?: run {
             try {
@@ -27,19 +25,16 @@ object UserRepository {
         }
     }
 
-    // --- FUNÇÃO DE PERFIL (Calcula notas e retorna User completo) ---
     suspend fun getUsuarioPorId(userId: String): User? {
-        try {
+        return try {
             val doc = db.collection("users").document(userId).get().await()
-            if (!doc.exists()) return null
-
-            return doc.toObject(User::class.java)
+            if (!doc.exists()) null
+            else doc.toObject(User::class.java)
         } catch (e: Exception) {
-            return null
+            null
         }
     }
 
-    // --- FUNÇÃO DE AVALIAÇÕES (Para o Perfil Público) ---
     suspend fun getTodasAvaliacoes(userId: String): List<UserAvaliacao> {
         return try {
             val snapshot = db.collection("userAval")
@@ -53,15 +48,25 @@ object UserRepository {
         }
     }
 
-    // --- NOVA FUNÇÃO: UPLOAD E ATUALIZAÇÃO DE FOTO ---
     suspend fun atualizarFotoPerfil(userId: String, imageUri: Uri): String {
         val storageRef = storage.reference.child("profile_images/$userId.jpg")
         storageRef.putFile(imageUri).await()
+
         val downloadUrl = storageRef.downloadUrl.await().toString()
         db.collection("users").document(userId)
             .update("fotoUrl", downloadUrl)
             .await()
 
         return downloadUrl
+    }
+
+    suspend fun atualizarChavePix(userId: String, novaChave: String) {
+        try {
+            db.collection("users").document(userId)
+                .update("chavePix", novaChave)
+                .await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

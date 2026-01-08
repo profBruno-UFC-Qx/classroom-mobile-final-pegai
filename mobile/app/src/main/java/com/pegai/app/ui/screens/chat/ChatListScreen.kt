@@ -24,10 +24,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.ui.components.GuestPlaceholder
 import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.viewmodel.chat.ChatListViewModel
 
 data class ChatSummary(
     val chatId: String,
@@ -42,14 +44,18 @@ data class ChatSummary(
 @Composable
 fun ChatListScreen(
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    viewModel: ChatListViewModel = viewModel()
 ) {
     val user by authViewModel.usuarioLogado.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    // Controle das Abas (0 = Locador, 1 = Locatário)
+    LaunchedEffect(user) {
+        user?.let { viewModel.carregarConversas(it.uid) }
+    }
+
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Como Locador", "Como Locatário")
-
     val brandGradient = Brush.horizontalGradient(
         colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2))
     )
@@ -62,28 +68,14 @@ fun ChatListScreen(
             onRegisterClick = { navController.navigate("register") }
         )
     } else {
-        // MOCK DE DADOS (Simulando o que virá do Firebase)
-        val chats = listOf(
-            ChatSummary("1", "Maria Oliveira", "", "Calculadora HP 12c", "Tudo bem, pode pegar amanhã.", "10:30", false),
-            ChatSummary("2", "João Silva", "", "Livro Cálculo I", "Ainda está disponível?", "Ontem", true),
-            ChatSummary("3", "Ana Costa", "", "Jaleco G", "Aceito sua oferta.", "Segunda", true),
-            ChatSummary("4", "Pedro Rocha", "", "Furadeira Bosch", "Qual horário fica bom pra você?", "08:15", false),
-            ChatSummary("5", "Lucas Lima", "", "Câmera Canon", "Vou querer alugar por 3 dias.", "Sexta", true)
-        )
-
-        // Filtra as listas para cada aba
-        val chatsFiltrados = if (selectedTab == 0) {
-            chats.filter { it.isMeOwner }
-        } else {
-            chats.filter { !it.isMeOwner }
-        }
+        val chatsParaExibir = if (selectedTab == 0) uiState.chatsAsOwner else uiState.chatsAsRenter
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(brandGradient)
         ) {
-            // === HEADER UNIFICADO ===
+            // --- Header ---
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
 
@@ -99,7 +91,6 @@ fun ChatListScreen(
                     )
                 }
 
-                // ABAS ESTILO ADICIONAR PRODUTO
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = Color.White,
@@ -138,19 +129,23 @@ fun ChatListScreen(
                 }
             }
 
-            // === CONTEÚDO DA LISTA  ===
+            // --- Chat List Content ---
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = Color.White
             ) {
-                if (chatsFiltrados.isEmpty()) {
+                if (uiState.isLoading) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF0E8FC6))
+                    }
+                } else if (chatsParaExibir.isEmpty()) {
                     EmptyChatState(if (selectedTab == 0) "locador" else "locatário")
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 100.dp)
                     ) {
-                        items(chatsFiltrados) { chat ->
+                        items(chatsParaExibir) { chat ->
                             ConversationItem(chat, brandGradient) {
                                 navController.navigate("chat_detail/${chat.chatId}")
                             }
@@ -178,7 +173,6 @@ fun ConversationItem(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar com Borda em Degradê solicitada
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -226,7 +220,6 @@ fun ConversationItem(
                     )
                 }
 
-                // Nome do Produto em Azul para destaque sutil
                 Text(
                     text = chat.productName,
                     fontSize = 12.sp,
@@ -236,7 +229,6 @@ fun ConversationItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                // Última mensagem
                 Text(
                     text = chat.lastMessage,
                     fontSize = 13.sp,

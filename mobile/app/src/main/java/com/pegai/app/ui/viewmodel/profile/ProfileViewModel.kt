@@ -3,8 +3,10 @@ package com.pegai.app.ui.viewmodel.profile
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegai.app.data.data.repository.ProductRepository
 import com.pegai.app.data.data.repository.UserRepository
 import com.pegai.app.model.User
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,28 +18,28 @@ class ProfileViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    // -------- USUÁRIO --------
-
     fun carregarDadosUsuario(usuarioAuth: User?) {
         if (usuarioAuth == null) return
 
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            // Busca dados completos
-            val usuarioCompleto = UserRepository.getUsuarioPorId(usuarioAuth.uid) ?: usuarioAuth
+            val usuarioDeferred = async { UserRepository.getUsuarioPorId(usuarioAuth.uid) ?: usuarioAuth }
+            val qtdAnunciosDeferred = async { ProductRepository.getQuantidadeProdutosPorDono(usuarioAuth.uid) }
+
+            val usuarioCompleto = usuarioDeferred.await()
+            val totalAnuncios = qtdAnunciosDeferred.await()
 
             _uiState.update {
                 it.copy(
                     user = usuarioCompleto,
                     chavePix = usuarioCompleto.chavePix,
+                    anuncios = totalAnuncios.toString(),
                     isLoading = false
                 )
             }
         }
     }
-
-    // -------- FOTO DE PERFIL (NOVO) --------
 
     fun atualizarFotoDePerfil(uri: Uri) {
         val currentUser = _uiState.value.user ?: return
@@ -46,10 +48,8 @@ class ProfileViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Chama o repositório para fazer o upload
                 val novaUrl = UserRepository.atualizarFotoPerfil(currentUser.uid, uri)
 
-                // Atualiza o estado local com a nova URL para refletir na tela na hora
                 _uiState.update { state ->
                     state.copy(
                         isLoading = false,
@@ -57,13 +57,12 @@ class ProfileViewModel : ViewModel() {
                     )
                 }
             } catch (e: Exception) {
-                // Se der erro, volta o loading e pode setar mensagem de erro
                 _uiState.update { it.copy(isLoading = false, erro = "Erro ao atualizar foto.") }
             }
         }
     }
 
-    // -------- PIX --------
+    // --- Pix Management ---
 
     fun abrirPixDialog() {
         _uiState.update {
@@ -83,15 +82,27 @@ class ProfileViewModel : ViewModel() {
     }
 
     fun salvarChavePix() {
+        val currentUser = _uiState.value.user ?: return
         val novaChave = _uiState.value.chavePixTemp
 
-        // TODO: Salvar chave Pix no Firestore
+        _uiState.update { it.copy(isLoading = true) }
 
-        _uiState.update {
-            it.copy(
-                chavePix = novaChave,
-                isPixDialogVisible = false
-            )
+        viewModelScope.launch {
+            try {
+                UserRepository.atualizarChavePix(currentUser.uid, novaChave)
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        chavePix = novaChave,
+                        isPixDialogVisible = false,
+                        user = it.user?.copy(chavePix = novaChave)
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiState.update { it.copy(isLoading = false, erro = "Erro ao salvar Pix.") }
+            }
         }
     }
 }

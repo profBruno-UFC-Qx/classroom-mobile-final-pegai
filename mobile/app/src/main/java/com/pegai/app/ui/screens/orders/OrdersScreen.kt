@@ -33,11 +33,9 @@ import coil.compose.AsyncImage
 import com.pegai.app.model.Rental
 import com.pegai.app.model.RentalStatus
 import com.pegai.app.model.User
+import com.pegai.app.ui.navigation.Screen
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.orders.OrdersViewModel
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 @Composable
 fun OrdersScreen(
@@ -57,7 +55,7 @@ fun OrdersScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
-        // --- HEADER ---
+        // --- Header ---
         Column(modifier = Modifier.fillMaxWidth().background(brandGradient)) {
             Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
@@ -89,11 +87,24 @@ fun OrdersScreen(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Color(0xFF0E8FC6)) }
         } else {
             val lista = if (selectedTab == 0) uiState.activeRentals else uiState.inactiveRentals
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                items(lista) { rental ->
-                    RentalTicketCard(rental = rental, currentUser = authUser, onClick = { })
+
+            if (lista.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Nenhum aluguel encontrado.", color = Color.Gray)
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+            } else {
+                LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                    items(lista) { rental ->
+                        RentalTicketCard(
+                            rental = rental,
+                            currentUser = authUser,
+                            onClick = {
+                                navController.navigate(Screen.ChatDetail.createRoute(rental.id))
+                            }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                }
             }
         }
     }
@@ -103,8 +114,10 @@ fun OrdersScreen(
 fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
     val currentUserId = currentUser?.uid ?: ""
     val isLocador = rental.locadorId == currentUserId
-    val nomeLocadorDisplay = if (isLocador) "Você" else rental.locadorNome.split(" ").first()
-    val nomeLocatarioDisplay = if (!isLocador) "Você" else rental.locatarioNome.split(" ").first()
+
+    val nomeLocadorDisplay = if (isLocador) "Você" else rental.locadorNome.split(" ").firstOrNull() ?: "Dono"
+    val nomeLocatarioDisplay = if (!isLocador) "Você" else rental.locatarioNome.split(" ").firstOrNull() ?: "Cliente"
+
     val brandGradient = Brush.horizontalGradient(colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
 
     Column(modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
@@ -141,32 +154,20 @@ fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
 fun RentalCardBody(rental: Rental) {
     val mainColor = Color(0xFF0E8FC6)
     val errorColor = Color(0xFFD32F2F)
+    val successColor = Color(0xFF2E7D32)
+    val warningColor = Color(0xFFF57C00)
 
     val (textoPreco, textoPrecoSub, textoStatus, icone, corStatus) = when (rental.status) {
-        RentalStatus.COMPLETED -> {
-            listOf("R$ ${String.format("%.0f", rental.productPrice)}", "Aluguel encerrado", "Concluído com sucesso!", Icons.Default.CheckCircle, Color(0xFF2E7D32))
-        }
-        RentalStatus.CANCELLED, RentalStatus.DECLINED -> {
-            listOf(
-                "R$ ${String.format("%.0f", rental.productPrice)}",
-                "Solicitação encerrada",
-                if (rental.status == RentalStatus.CANCELLED) "Aluguel cancelado" else "Solicitação recusada",
-                Icons.Default.Close,
-                errorColor
-            )
-        }
-        RentalStatus.PAID, RentalStatus.ONGOING -> {
-            val diff = rental.dataFim.toDate().time - rental.dataInicio.toDate().time
-            val dias = TimeUnit.MILLISECONDS.toDays(diff).coerceAtLeast(1)
-            val sdf = SimpleDateFormat("dd/MM", Locale("pt", "BR"))
-            listOf("R$ ${String.format("%.0f", rental.productPrice * dias)}", "Total ($dias dias)", "${sdf.format(rental.dataInicio.toDate())} - ${sdf.format(rental.dataFim.toDate())}", Icons.Default.CalendarMonth, Color(0xFF444444))
-        }
-        RentalStatus.APPROVED -> {
-            listOf("R$ ${String.format("%.0f", rental.productPrice)}", "por diária", "Negociar datas no chat", Icons.Default.Chat, mainColor)
-        }
-        else -> {
-            listOf("R$ ${String.format("%.0f", rental.productPrice)}", "por diária", "Aguardando aceite do dono", Icons.Default.HourglassEmpty, Color.Gray)
-        }
+        RentalStatus.COMPLETED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Total Pago", "Concluído", Icons.Default.CheckCircle, successColor)
+        RentalStatus.CANCELLED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Cancelado", "Aluguel Cancelado", Icons.Default.Cancel, errorColor)
+        RentalStatus.DECLINED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Recusado", "Solicitação Recusada", Icons.Default.Cancel, errorColor)
+        RentalStatus.PENDING -> listOf("R$ --", "Aguardando", "Solicitação Enviada", Icons.Default.HourglassEmpty, Color.Gray)
+        RentalStatus.APPROVED_WAITING_DATES -> listOf("R$ --", "Aguardando", "Dono definindo datas", Icons.Default.DateRange, mainColor)
+        RentalStatus.DATES_PROPOSED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Proposta", "Aguardando Aceite", Icons.Default.EditCalendar, mainColor)
+        RentalStatus.AWAITING_DELIVERY -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Combinado", "Aguardando Entrega", Icons.Default.LocalShipping, warningColor)
+        RentalStatus.DELIVERY_CONFIRMED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Combinado", "Confirmando Recebimento", Icons.Default.FactCheck, warningColor)
+        RentalStatus.ONGOING -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Em Curso", "Em Uso", Icons.Default.Timer, successColor)
+        RentalStatus.RETURN_SIGNALED -> listOf("R$ ${String.format("%.2f", rental.productPrice)}", "Em Curso", "Devolução Iniciada", Icons.Default.AssignmentReturn, warningColor)
     }
 
     Column {
@@ -179,7 +180,9 @@ fun RentalCardBody(rental: Rental) {
             }
             Box(modifier = Modifier.align(Alignment.BottomStart).padding(12.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.7f)).padding(10.dp, 6.dp)) {
                 Column {
+                    @Suppress("UNCHECKED_CAST")
                     Text(text = textoPreco as String, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    @Suppress("UNCHECKED_CAST")
                     Text(text = textoPrecoSub as String, color = Color.LightGray, fontSize = 10.sp)
                 }
             }
@@ -192,15 +195,13 @@ fun RentalCardBody(rental: Rental) {
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = icone as ImageVector,
-                    contentDescription = null,
-                    tint = if(corStatus == Color(0xFF444444)) mainColor else corStatus as Color,
-                    modifier = Modifier.size(28.dp)
-                )
+                @Suppress("UNCHECKED_CAST")
+                Icon(imageVector = icone as ImageVector, contentDescription = null, tint = corStatus as Color, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
+                    @Suppress("UNCHECKED_CAST")
                     Text(text = "Status da Reserva", fontSize = 10.sp, color = Color.Gray)
+                    @Suppress("UNCHECKED_CAST")
                     Text(text = textoStatus as String, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = corStatus as Color)
                 }
             }

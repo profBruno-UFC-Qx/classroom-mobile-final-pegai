@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegai.app.data.data.repository.RentalRepository
 import com.pegai.app.model.Rental
+import com.pegai.app.model.RentalStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,11 +30,17 @@ class OrdersViewModel : ViewModel() {
             try {
                 val todosAlugueis = RentalRepository.getRentalsForUser(currentUserId)
 
-                val ativos = todosAlugueis.filter { it.status.isActive }
-                    .sortedByDescending { it.dataCriacao }
+                val ativos = todosAlugueis.filter {
+                    it.status != RentalStatus.COMPLETED &&
+                            it.status != RentalStatus.CANCELLED &&
+                            it.status != RentalStatus.DECLINED
+                }.sortedByDescending { it.dataCriacao }
 
-                val inativos = todosAlugueis.filter { !it.status.isActive }
-                    .sortedByDescending { it.dataFim }
+                val inativos = todosAlugueis.filter {
+                    it.status == RentalStatus.COMPLETED ||
+                            it.status == RentalStatus.CANCELLED ||
+                            it.status == RentalStatus.DECLINED
+                }.sortedByDescending { it.dataFim }
 
                 _uiState.update {
                     it.copy(
@@ -43,6 +50,7 @@ class OrdersViewModel : ViewModel() {
                     )
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
                 _uiState.update { it.copy(isLoading = false, erro = e.message) }
             }
         }

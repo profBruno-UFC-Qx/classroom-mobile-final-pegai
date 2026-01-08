@@ -1,5 +1,6 @@
 package com.pegai.app.ui.screens.chat
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,42 +25,53 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.pegai.app.model.ChatMessage
 import com.pegai.app.model.RentalStatus
-import com.pegai.app.ui.screens.chat.components.RentalStatusTicket
+import com.pegai.app.ui.navigation.Screen
 import com.pegai.app.ui.screens.chat.components.RentalDatePickerSheet
-
-data class ChatMessageLocal(val text: String, val isMe: Boolean)
+import com.pegai.app.ui.screens.chat.components.RentalStatusTicket
+import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.viewmodel.chat.ChatViewModel
 
 @Composable
 fun ChatDetailScreen(
     navController: NavController,
-    chatId: String?
+    chatId: String?,
+    authViewModel: AuthViewModel,
+    viewModel: ChatViewModel = viewModel()
 ) {
-    // 1. Definição se é Dono ou Cliente baseado no ID
-    val isOwner = chatId == "chat_dono_123"
-    val otherUserName = if (isOwner) "João Interessado" else "Edineide Silva (Dona)"
+    val uiState by viewModel.uiState.collectAsState()
+    val currentUser by authViewModel.usuarioLogado.collectAsState()
 
-    // 2. Estados Locais (Tela Burra)
-    var status by remember { mutableStateOf(RentalStatus.PENDING) }
+    LaunchedEffect(chatId, currentUser) {
+        if (chatId != null && currentUser != null) {
+            viewModel.inicializarChat(chatId, currentUser!!.uid)
+        }
+    }
+
     var messageText by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
-    var selectedStart by remember { mutableStateOf("") }
-    var selectedEnd by remember { mutableStateOf("") }
-    var totalValue by remember { mutableDoubleStateOf(0.0) }
-
-    val messages = remember {
-        mutableStateListOf(ChatMessageLocal("Olá! Tenho interesse na calculadora.", false))
-    }
 
     val brandGradient = Brush.horizontalGradient(listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
     val azulTema = Color(0xFF0A5C8A)
+    val chatRoom = uiState.chatRoom
+
+    val statusEnum = try {
+        if (chatRoom != null) RentalStatus.valueOf(chatRoom.status) else RentalStatus.PENDING
+    } catch (e: Exception) { RentalStatus.PENDING }
+
+    val isOwner = chatRoom?.ownerId == uiState.currentUserId
+    val productName = chatRoom?.productName ?: "Carregando..."
+    val userName = uiState.otherUserName.ifEmpty { "Carregando..." }
+    val userPhoto = uiState.otherUserPhoto
 
     Box(modifier = Modifier.fillMaxSize().background(brandGradient)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Topo (Header + Ticket)
+            // --- Header ---
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Spacer(modifier = Modifier.height(12.dp))
@@ -71,76 +84,92 @@ fun ChatDetailScreen(
                     Column {
                         ChatHeaderInternal(
                             navController = navController,
-                            userName = otherUserName,
-                            userPhoto = "https://media-for2-2.cdn.whatsapp.net/v/t61.24694-24/537374086_697212073422555_5417296598778872192_n.jpg",
-                            productName = "Calculadora HP 12c",
+                            userName = userName,
+                            productName = productName,
+                            userPhoto = userPhoto,
                             gradient = brandGradient,
-                            azulTema = azulTema
+                            onProfileClick = {
+                                if (uiState.otherUserId.isNotEmpty()) {
+                                    navController.navigate(Screen.PublicProfile.createRoute(uiState.otherUserId))
+                                }
+                            }
                         )
 
                         RentalStatusTicket(
-                            status = status,
+                            status = statusEnum,
                             isOwner = isOwner,
-                            startDate = selectedStart,
-                            endDate = selectedEnd,
-                            totalValue = totalValue,
-                            onAccept = { status = RentalStatus.APPROVED },
-                            onReject = { status = RentalStatus.DECLINED },
-                            onManageDates = { showDatePicker = true },
-                            onConfirmProposal = { status = RentalStatus.PAID }
+                            startDate = chatRoom?.contract?.startDate ?: "",
+                            endDate = chatRoom?.contract?.endDate ?: "",
+                            totalValue = chatRoom?.contract?.totalPrice ?: 0.0,
+                            onOwnerAcceptRequest = { viewModel.aceitarSolicitacao() },
+                            onOwnerRejectRequest = { viewModel.recusarSolicitacao() },
+                            onOwnerSetDates = { showDatePicker = true },
+                            onRenterAcceptDates = { viewModel.aceitarDatas() },
+                            onOwnerConfirmDelivery = { viewModel.confirmarEntregaDono() },
+                            onRenterConfirmReceipt = { viewModel.confirmarRecebimentoLocatario() },
+                            onRenterSignalReturn = { viewModel.sinalizarDevolucao() },
+                            onOwnerConfirmReturn = { viewModel.confirmarDevolucaoFinal() }
                         )
                     }
                 }
             }
 
-            // Corpo do Chat (Mensagens)
+            // --- Chat Content ---
             Scaffold(
                 modifier = Modifier.weight(1f),
                 containerColor = Color(0xFFF8F9FA),
                 contentWindowInsets = WindowInsets.ime,
                 bottomBar = {
                     Surface(color = Color(0xFFF8F9FA)) {
-                        if (status == RentalStatus.PENDING) {
-                            ChatLockedBar()
-                        } else {
+                        if (statusEnum.isChatUnlocked) {
                             MessageInputBarRelative(
                                 text = messageText,
                                 onTextChange = { messageText = it },
                                 onSend = {
                                     if (messageText.isNotBlank()) {
-                                        messages.add(ChatMessageLocal(messageText, true))
+                                        viewModel.enviarMensagem(messageText)
                                         messageText = ""
                                     }
                                 },
-                                azulTema = azulTema,
-                                isOwner = isOwner
+                                azulTema = azulTema
                             )
+                        } else {
+                            ChatLockedBar()
                         }
                     }
                 }
             ) { paddingValues ->
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
-                    reverseLayout = true,
-                    contentPadding = PaddingValues(vertical = 16.dp)
-                ) {
-                    items(messages.reversed()) { msg ->
-                        MessageBubbleRelative(msg, azulTema, isOwner)
-                        Spacer(modifier = Modifier.height(8.dp))
+                if (uiState.isLoading) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = azulTema)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
+                        reverseLayout = true,
+                        contentPadding = PaddingValues(vertical = 16.dp)
+                    ) {
+                        items(uiState.messages.reversed()) { msg ->
+                            val isMe = msg.senderId == uiState.currentUserId
+                            MessageBubbleRelative(msg, isMe, azulTema)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
         }
 
-        // Modal de Datas
-        if (showDatePicker && isOwner) {
+        if (showDatePicker) {
             RentalDatePickerSheet(
-                dailyPrice = 35.0,
+                dailyPrice = chatRoom?.contract?.price ?: 0.0,
+                diasCalculados = uiState.diasCalculados,
+                totalCalculado = uiState.totalCalculado,
                 onDismiss = { showDatePicker = false },
+                onDateSelectionChanged = { start, end ->
+                    viewModel.simularValoresAluguel(start, end, chatRoom?.contract?.price ?: 0.0)
+                },
                 onConfirm = { start, end, total ->
-                    selectedStart = start
-                    selectedEnd = end
-                    totalValue = total
+                    viewModel.definirDatas(start, end, total)
                     showDatePicker = false
                 }
             )
@@ -148,46 +177,71 @@ fun ChatDetailScreen(
     }
 }
 
-// --- COMPONENTES AUXILIARES ---
-
 @Composable
-fun ChatHeaderInternal(navController: NavController, userName: String, userPhoto: String, productName: String, gradient: Brush, azulTema: Color) {
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF333333)) }
-        Box(modifier = Modifier.size(44.dp).border(2.dp, gradient, CircleShape).padding(2.dp).clip(CircleShape)) {
-            AsyncImage(model = userPhoto, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+fun ChatHeaderInternal(
+    navController: NavController,
+    userName: String,
+    userPhoto: String,
+    productName: String,
+    gradient: Brush,
+    onProfileClick: () -> Unit
+) {
+    val mainColor = Color(0xFF0A5C8A)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.size(24.dp)) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF333333))
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Box(modifier = Modifier.size(44.dp).border(2.dp, gradient, CircleShape).padding(2.dp).clip(CircleShape).clickable { onProfileClick() }) {
+            if (userPhoto.isNotEmpty()) {
+                AsyncImage(model = userPhoto, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            } else {
+                Box(Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
+                    Text(userName.take(1), fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = userName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF333333))
-            Text(text = "Sobre: $productName", fontSize = 11.sp, color = Color.Gray)
+            Text(text = userName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF333333), modifier = Modifier.clickable { onProfileClick() }, maxLines = 1)
+            Text(text = productName, fontSize = 11.sp, color = Color.Gray, maxLines = 1)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Surface(onClick = onProfileClick, shape = RoundedCornerShape(50), color = Color.White, border = BorderStroke(1.dp, gradient)) {
+            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Person, null, tint = mainColor, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = "Ver Perfil", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = mainColor)
+            }
         }
     }
     HorizontalDivider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(horizontal = 16.dp))
 }
 
 @Composable
-fun MessageBubbleRelative(msg: ChatMessageLocal, azulTema: Color, isOwner: Boolean) {
-    val bubbleShape = if (msg.isMe) RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp) else RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (msg.isMe) Arrangement.End else Arrangement.Start) {
-        Surface(
-            color = if (msg.isMe) (if (isOwner) azulTema else Color.White) else Color.White,
-            shape = bubbleShape,
-            shadowElevation = 1.dp,
-            modifier = if (msg.isMe && !isOwner) Modifier.border(1.5.dp, azulTema, bubbleShape) else Modifier
-        ) {
-            Text(text = msg.text, color = if (msg.isMe && isOwner) Color.White else (if (msg.isMe) azulTema else Color(0xFF333333)), modifier = Modifier.padding(12.dp), fontSize = 15.sp)
+fun MessageBubbleRelative(msg: ChatMessage, isMe: Boolean, azulTema: Color) {
+    val bubbleShape = if (isMe) RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp) else RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start) {
+        Surface(color = if (isMe) azulTema else Color.White, shape = bubbleShape, shadowElevation = 1.dp) {
+            Text(text = msg.text, color = if (isMe) Color.White else Color(0xFF333333), modifier = Modifier.padding(12.dp), fontSize = 15.sp)
         }
     }
 }
 
 @Composable
-fun MessageInputBarRelative(text: String, onTextChange: (String) -> Unit, onSend: () -> Unit, azulTema: Color, isOwner: Boolean) {
+fun MessageInputBarRelative(text: String, onTextChange: (String) -> Unit, onSend: () -> Unit, azulTema: Color) {
     Row(modifier = Modifier.navigationBarsPadding().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        TextField(value = text, onValueChange = onTextChange, placeholder = { Text("Mensagem...") }, modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)), colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
+        TextField(
+            value = text, onValueChange = onTextChange, placeholder = { Text("Mensagem...") },
+            modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)),
+            colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
+        )
         Spacer(modifier = Modifier.width(12.dp))
-        Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(if (isOwner) azulTema else Color.White).then(if (!isOwner) Modifier.border(1.5.dp, azulTema, CircleShape) else Modifier).clickable { onSend() }, contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(20.dp), tint = if (isOwner) Color.White else azulTema)
+        Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(azulTema).clickable { onSend() }, contentAlignment = Alignment.Center) {
+            Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(20.dp), tint = Color.White)
         }
     }
 }
@@ -197,6 +251,6 @@ fun ChatLockedBar() {
     Row(modifier = Modifier.navigationBarsPadding().padding(24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         Icon(Icons.Default.Lock, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text("O chat será liberado após o aceite.", color = Color.Gray, fontSize = 13.sp)
+        Text("Chat bloqueado nesta etapa.", color = Color.Gray, fontSize = 13.sp)
     }
 }

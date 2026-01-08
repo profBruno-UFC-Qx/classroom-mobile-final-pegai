@@ -1,16 +1,31 @@
 package com.pegai.app.data.data.repository
 
+import android.net.Uri
 import android.util.Log
 import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import com.pegai.app.model.Product
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 object ProductRepository {
 
-    // Cache simples em memória
-    private val cache = mutableMapOf<String, Product>()
     private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
+    private val cache = mutableMapOf<String, Product>()
+
+    fun salvarNoCache(produtos: List<Product>) {
+        produtos.forEach { product ->
+            if (product.pid.isNotEmpty()) {
+                cache[product.pid] = product
+            }
+        }
+    }
+
+    fun getProdutoPorId(id: String): Product? {
+        return cache[id]
+    }
 
     suspend fun getProdutosPorDono(donoId: String): List<Product> {
         return try {
@@ -19,43 +34,64 @@ object ProductRepository {
                 .get()
                 .await()
 
-            val lista = snapshot.documents.mapNotNull { doc ->
-                // O toObject exige que Product tenha valores padrão no construtor
-                doc.toObject(Product::class.java)?.copy(
-                    pid = doc.id
-                )
-            }
-
-            // Atualiza o cache com o que baixamos
+            val lista = snapshot.toObjects(Product::class.java)
             salvarNoCache(lista)
             lista
         } catch (e: Exception) {
-            Log.e("ProductRepo", "Erro ao buscar produtos do dono: $donoId", e)
+            Log.e("ProductRepo", "Erro ao buscar produtos", e)
             emptyList()
         }
     }
 
     suspend fun getQuantidadeProdutosPorDono(donoId: String): Int {
         return try {
-            val query = db.collection("products")
+            val snapshot = db.collection("products")
                 .whereEqualTo("donoId", donoId)
-
-            // Tenta usar a contagem do servidor (mais rápido e barato)
-            val snapshot = query.count().get(AggregateSource.SERVER).await()
+                .count()
+                .get(AggregateSource.SERVER)
+                .await()
             snapshot.count.toInt()
         } catch (e: Exception) {
-            Log.e("ProductRepo", "Erro ao contar produtos", e)
             0
         }
     }
 
-    fun salvarNoCache(produtos: List<Product>) {
-        produtos.forEach { product ->
-            cache[product.pid] = product
+    suspend fun uploadImagemProduto(uri: Uri): String {
+        return try {
+            val filename = UUID.randomUUID().toString()
+            val ref = storage.reference.child("product_images/$filename.jpg")
+
+            ref.putFile(uri).await()
+            ref.downloadUrl.await().toString()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw Exception("Falha ao enviar imagem: ${e.message}")
         }
     }
 
-    fun getProdutoPorId(id: String): Product? {
-        return cache[id]
+    suspend fun salvarProduto(product: Product) {
+        try {
+            db.collection("products").document(product.pid)
+                .set(product)
+                .await()
+
+            cache[product.pid] = product
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw Exception("Falha ao salvar dados: ${e.message}")
+        }
+    }
+
+    suspend fun excluirProduto(productId: String) {
+        try {
+            db.collection("products").document(productId)
+                .delete()
+                .await()
+
+            cache.remove(productId)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw Exception("Falha ao excluir: ${e.message}")
+        }
     }
 }
