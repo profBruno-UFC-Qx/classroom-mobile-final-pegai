@@ -47,7 +47,12 @@ fun OrdersScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Em Andamento", "Histórico")
+    val azulPrimario = Color(0xFF0E8FC6)
+
+    val tabs = listOf(
+        "Em Andamento" to Icons.Default.Sync,
+        "Histórico" to Icons.Default.History
+    )
     val brandGradient = Brush.horizontalGradient(colors = listOf(Color(0xFF0A5C8A), Color(0xFF2ED1B2)))
 
     LaunchedEffect(authUser) {
@@ -65,18 +70,37 @@ fun OrdersScreen(
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.White,
-                    contentColor = Color(0xFF0E8FC6),
+                    contentColor = azulPrimario,
                     indicator = { tabPositions ->
                         Box(Modifier.tabIndicatorOffset(tabPositions[selectedTab]).height(3.dp).background(brandGradient))
                     },
                     divider = { HorizontalDivider(color = Color(0xFFEEEEEE)) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    tabs.forEachIndexed { index, title ->
+                    tabs.forEachIndexed { index, (title, icon) ->
+                        val isSelected = selectedTab == index
+                        val contentColor = if (isSelected) azulPrimario else Color.Gray
+
                         Tab(
-                            selected = selectedTab == index,
+                            selected = isSelected,
                             onClick = { selectedTab = index },
-                            text = { Text(text = title, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium, fontSize = 14.sp) }
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = contentColor
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        color = contentColor
+                                    )
+                                }
+                            }
                         )
                     }
                 }
@@ -84,7 +108,7 @@ fun OrdersScreen(
         }
 
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Color(0xFF0E8FC6)) }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = azulPrimario) }
         } else {
             val lista = if (selectedTab == 0) uiState.activeRentals else uiState.inactiveRentals
 
