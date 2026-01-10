@@ -84,7 +84,10 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     bottomBar = {
                         if (showBottomBar) {
-                            FloatingBottomBar(navController = navController)
+                            FloatingBottomBar(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.background

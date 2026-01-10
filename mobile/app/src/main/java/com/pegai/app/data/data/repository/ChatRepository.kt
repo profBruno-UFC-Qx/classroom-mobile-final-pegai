@@ -1,6 +1,7 @@
 package com.pegai.app.repository
 
 import android.util.Log
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.toObject
@@ -54,6 +55,27 @@ class ChatRepository {
         db.collection("chats").document(chatId)
             .collection("messages")
             .add(message)
+    }
+
+    fun markChatAsRead(chatId: String, userId: String) {
+        val updates = mapOf(
+            "unreadCounts.$userId" to 0
+        )
+        db.collection("chats").document(chatId).update(updates)
+            .addOnFailureListener { e -> Log.e("ChatRepo", "Erro ao marcar lido", e) }
+    }
+
+    fun updateLastMessage(chatId: String, lastMessage: String, receiverId: String?) {
+        val updates = mutableMapOf<String, Any>(
+            "lastMessage" to lastMessage,
+            "updatedAt" to System.currentTimeMillis()
+        )
+
+        if (receiverId != null) {
+            updates["unreadCounts.$receiverId"] = FieldValue.increment(1)
+        }
+
+        db.collection("chats").document(chatId).update(updates)
     }
 
     fun updateStatus(chatId: String, newStatus: String) {
@@ -112,7 +134,8 @@ class ChatRepository {
                 productImage = product.imageUrl,
                 status = "PENDING",
                 lastMessage = "Tenho interesse no aluguel.",
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                unreadCounts = mapOf(ownerId to 1, renterId to 0)
             )
             val docRef = db.collection("chats").add(novoChat).await()
             val msgInicial = ChatMessage(
@@ -136,15 +159,6 @@ class ChatRepository {
         }
     }
 
-    fun updateLastMessage(chatId: String, lastMessage: String) {
-        val updates = mapOf(
-            "lastMessage" to lastMessage,
-            "updatedAt" to System.currentTimeMillis()
-        )
-        db.collection("chats").document(chatId).update(updates)
-    }
-
-
     suspend fun saveProductReview(productId: String, chatId: String, review: Review) {
         val productRef = db.collection("products").document(productId)
         val chatRef = db.collection("chats").document(chatId)
@@ -162,7 +176,6 @@ class ChatRepository {
         try {
             db.runTransaction { transaction ->
                 val snapshot = transaction.get(productRef)
-
                 val currentNota = snapshot.getDouble("nota") ?: 0.0
                 val currentTotal = snapshot.getLong("totalAvaliacoes") ?: 0L
                 val newTotal = currentTotal + 1
@@ -172,7 +185,6 @@ class ChatRepository {
                 transaction.update(productRef, "nota", newAverage)
                 transaction.update(productRef, "totalAvaliacoes", newTotal)
                 transaction.update(chatRef, "isProductReviewed", true)
-
             }.await()
         } catch (e: Exception) {
             Log.e("ChatRepo", "Erro ao salvar avaliação de produto", e)
@@ -202,26 +214,20 @@ class ChatRepository {
                     val totalAtual = snapshot.getLong("totalAvaliacoesLocador") ?: 0L
                     val newTotal = totalAtual + 1
                     val newAverage = ((notaAtual * totalAtual) + review.nota.toDouble()) / newTotal.toDouble()
-
                     transaction.update(userRef, "notaLocador", newAverage)
                     transaction.update(userRef, "totalAvaliacoesLocador", newTotal)
-
                     "isOwnerReviewed"
                 } else {
                     val notaAtual = snapshot.getDouble("notaLocatario") ?: 0.0
                     val totalAtual = snapshot.getLong("totalAvaliacoesLocatario") ?: 0L
                     val newTotal = totalAtual + 1
                     val newAverage = ((notaAtual * totalAtual) + review.nota.toDouble()) / newTotal.toDouble()
-
                     transaction.update(userRef, "notaLocatario", newAverage)
                     transaction.update(userRef, "totalAvaliacoesLocatario", newTotal)
-
                     "isRenterReviewed"
                 }
-
                 transaction.set(reviewRef, reviewMap)
                 transaction.update(chatRef, fieldToUpdateInChat, true)
-
             }.await()
 
         } catch (e: Exception) {
@@ -231,11 +237,7 @@ class ChatRepository {
 
     suspend fun getUserReviews(userId: String): List<Review> {
         return try {
-            val snapshot = db.collection("users")
-                .document(userId)
-                .collection("avaliacoes")
-                .orderBy("data", Query.Direction.DESCENDING)
-                .get().await()
+            val snapshot = db.collection("users").document(userId).collection("avaliacoes").orderBy("data", Query.Direction.DESCENDING).get().await()
             snapshot.toObjects(Review::class.java)
         } catch (e: Exception) {
             emptyList()

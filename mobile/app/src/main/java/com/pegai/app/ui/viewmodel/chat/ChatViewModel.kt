@@ -38,6 +38,10 @@ class ChatViewModel : ViewModel() {
         jobsEscuta?.cancel()
         isFirstLoad = true
 
+        viewModelScope.launch {
+            repository.markChatAsRead(chatId, userId)
+        }
+
         _uiState.update {
             it.copy(
                 isLoading = true,
@@ -84,6 +88,7 @@ class ChatViewModel : ViewModel() {
                         val lastMsg = msgs.lastOrNull()
                         if (lastMsg != null && lastMsg.senderId != userId) {
                             _playSoundEvent.emit(true)
+                            repository.markChatAsRead(chatId, userId)
                         }
                     }
 
@@ -100,6 +105,10 @@ class ChatViewModel : ViewModel() {
     fun enviarMensagem(texto: String) {
         val chatId = currentChatId ?: return
         val user = _uiState.value.currentUserId
+        val receiverId = _uiState.value.otherUserId.takeIf { it.isNotEmpty() }
+            ?: _uiState.value.chatRoom?.let {
+                if(it.ownerId == user) it.renterId else it.ownerId
+            }
 
         val novaMensagem = ChatMessage(
             text = texto,
@@ -109,7 +118,7 @@ class ChatViewModel : ViewModel() {
 
         viewModelScope.launch {
             repository.sendMessage(chatId, novaMensagem)
-            repository.updateLastMessage(chatId, texto)
+            repository.updateLastMessage(chatId, texto, receiverId)
         }
     }
 

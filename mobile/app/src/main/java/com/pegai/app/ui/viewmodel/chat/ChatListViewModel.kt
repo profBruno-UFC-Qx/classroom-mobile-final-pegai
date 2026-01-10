@@ -19,7 +19,11 @@ data class ChatListUiState(
     val isLoading: Boolean = true,
     val chatsAsOwner: List<ChatSummary> = emptyList(),
     val chatsAsRenter: List<ChatSummary> = emptyList()
-)
+) {
+    // Verifica se existe ALGUMA conversa com contador > 0
+    val hasUnreadMessages: Boolean
+        get() = (chatsAsOwner.sumOf { it.unreadCount } + chatsAsRenter.sumOf { it.unreadCount }) > 0
+}
 
 class ChatListViewModel : ViewModel() {
 
@@ -28,7 +32,9 @@ class ChatListViewModel : ViewModel() {
     val uiState: StateFlow<ChatListUiState> = _uiState.asStateFlow()
 
     fun carregarConversas(userId: String) {
-        _uiState.update { it.copy(isLoading = true) }
+        if (_uiState.value.chatsAsOwner.isEmpty() && _uiState.value.chatsAsRenter.isEmpty()) {
+            _uiState.update { it.copy(isLoading = true) }
+        }
 
         // Carregar conversas como Proprietário
         viewModelScope.launch {
@@ -36,6 +42,7 @@ class ChatListViewModel : ViewModel() {
                 val summaries = rooms.map { room ->
                     async {
                         val (nome, foto) = repository.getUserData(room.renterId)
+                        val unread = room.unreadCounts[userId] ?: 0
 
                         ChatSummary(
                             chatId = room.id,
@@ -44,7 +51,8 @@ class ChatListViewModel : ViewModel() {
                             productName = room.productName,
                             lastMessage = room.lastMessage,
                             time = formatarData(room.updatedAt),
-                            isMeOwner = true
+                            isMeOwner = true,
+                            unreadCount = unread
                         )
                     }
                 }.awaitAll()
@@ -59,6 +67,7 @@ class ChatListViewModel : ViewModel() {
                 val summaries = rooms.map { room ->
                     async {
                         val (nome, foto) = repository.getUserData(room.ownerId)
+                        val unread = room.unreadCounts[userId] ?: 0
 
                         ChatSummary(
                             chatId = room.id,
@@ -67,7 +76,8 @@ class ChatListViewModel : ViewModel() {
                             productName = room.productName,
                             lastMessage = room.lastMessage,
                             time = formatarData(room.updatedAt),
-                            isMeOwner = false
+                            isMeOwner = false,
+                            unreadCount = unread
                         )
                     }
                 }.awaitAll()

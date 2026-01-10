@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.ui.components.GuestPlaceholder
+import com.pegai.app.ui.components.PulsingNotificationBadge // Import the new component
 import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.chat.ChatListViewModel
@@ -39,7 +40,8 @@ data class ChatSummary(
     val productName: String,
     val lastMessage: String,
     val time: String,
-    val isMeOwner: Boolean
+    val isMeOwner: Boolean,
+    val unreadCount: Int = 0
 )
 
 @Composable
@@ -57,7 +59,6 @@ fun ChatListScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Como Locador", "Como Locatário")
-    // Alterado para usar a função do seu tema
     val currentBrandGradient = brandGradient()
 
     if (user == null) {
@@ -93,13 +94,13 @@ fun ChatListScreen(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.background, // Dinâmico
+                    color = MaterialTheme.colorScheme.background,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
                     TabRow(
                         selectedTabIndex = selectedTab,
                         containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.primary, // Dinâmico
+                        contentColor = MaterialTheme.colorScheme.primary,
                         indicator = { tabPositions ->
                             Box(
                                 modifier = Modifier
@@ -108,7 +109,7 @@ fun ChatListScreen(
                                     .background(currentBrandGradient)
                             )
                         },
-                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }, // Dinâmico
+                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         tabs.forEachIndexed { index, title ->
@@ -132,7 +133,7 @@ fun ChatListScreen(
             // --- Chat List Content ---
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background // Dinâmico
+                color = MaterialTheme.colorScheme.background
             ) {
                 if (uiState.isLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -164,37 +165,56 @@ fun ConversationItem(
     borderGradient: Brush,
     onClick: () -> Unit
 ) {
+    // Background muda se tiver mensagem não lida
+    val backgroundColor = if (chat.unreadCount > 0)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+    else
+        MaterialTheme.colorScheme.background
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(backgroundColor)
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .border(2.dp, borderGradient, CircleShape)
-                    .padding(3.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant), // Dinâmico
-                contentAlignment = Alignment.Center
-            ) {
-                if (chat.otherUserPhoto.isNotEmpty()) {
-                    AsyncImage(
-                        model = chat.otherUserPhoto,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.LightGray,
-                        modifier = Modifier.size(28.dp)
+            // --- AVATAR + PULSING BADGE ---
+            Box(contentAlignment = Alignment.TopEnd) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .border(2.dp, borderGradient, CircleShape)
+                        .padding(3.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (chat.otherUserPhoto.isNotEmpty()) {
+                        AsyncImage(
+                            model = chat.otherUserPhoto,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.LightGray,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+
+                // -> PULSING DOT LOGIC HERE <-
+                if (chat.unreadCount > 0) {
+                    PulsingNotificationBadge(
+                        modifier = Modifier.offset(x = 2.dp, y = (-2).dp),
+                        size = 14.dp,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -209,21 +229,43 @@ fun ConversationItem(
                 ) {
                     Text(
                         text = chat.otherUserName,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = if (chat.unreadCount > 0) FontWeight.ExtraBold else FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurface // Dinâmico
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = chat.time,
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = chat.time,
+                            fontSize = 11.sp,
+                            color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.primary else Color.Gray,
+                            fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Normal
+                        )
+
+                        if (chat.unreadCount > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape,
+                                modifier = Modifier.height(20.dp).defaultMinSize(minWidth = 20.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp)) {
+                                    Text(
+                                        text = chat.unreadCount.toString(),
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Text(
                     text = chat.productName,
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary, // Dinâmico
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -232,7 +274,8 @@ fun ConversationItem(
                 Text(
                     text = chat.lastMessage,
                     fontSize = 13.sp,
-                    color = Color.Gray,
+                    color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.onSurface else Color.Gray,
+                    fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -240,7 +283,7 @@ fun ConversationItem(
         }
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 16.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f) // Dinâmico
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     }
 }

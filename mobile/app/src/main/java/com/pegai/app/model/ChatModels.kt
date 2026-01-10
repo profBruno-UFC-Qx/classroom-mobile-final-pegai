@@ -20,6 +20,7 @@ data class ChatRoom(
     val lastMessage: String = "",
     val updatedAt: Long = 0,
     val contract: RentalContract = RentalContract(),
+    val unreadCounts: Map<String, Int> = emptyMap(),
 
     @get:PropertyName("isProductReviewed")
     val isProductReviewed: Boolean = false,

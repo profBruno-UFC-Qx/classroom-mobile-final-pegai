@@ -9,20 +9,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.pegai.app.ui.navigation.Screen
-import com.pegai.app.ui.theme.brandGradient // Importado do seu tema
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.viewmodel.chat.ChatListViewModel
 
 data class BottomNavItem(
     val label: String,
@@ -31,7 +32,18 @@ data class BottomNavItem(
 )
 
 @Composable
-fun FloatingBottomBar(navController: NavController) {
+fun FloatingBottomBar(
+    navController: NavController,
+    authViewModel: AuthViewModel,
+    chatViewModel: ChatListViewModel = viewModel()
+) {
+    // --- LÓGICA DE NOTIFICAÇÃO ---
+    val currentUser by authViewModel.usuarioLogado.collectAsState()
+    val chatState by chatViewModel.uiState.collectAsState()
+
+    LaunchedEffect(currentUser) {
+        currentUser?.let { chatViewModel.carregarConversas(it.uid) }
+    }
 
     val leftItems = listOf(
         BottomNavItem("Início", Screen.Home.route, Icons.Default.Home),
@@ -49,7 +61,6 @@ fun FloatingBottomBar(navController: NavController) {
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val totalHeight = 80.dp + navBarHeight
 
-    // Cores dinâmicas do Tema
     val activeColor = MaterialTheme.colorScheme.primary
     val unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
     val dynamicGradient = brandGradient()
@@ -60,10 +71,9 @@ fun FloatingBottomBar(navController: NavController) {
             .height(totalHeight),
         contentAlignment = Alignment.TopCenter
     ) {
-        // Background Surface Dinâmica
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface, // Muda para cinza escuro no Dark Mode
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             shadowElevation = 16.dp
         ) {
@@ -98,12 +108,15 @@ fun FloatingBottomBar(navController: NavController) {
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         rightItems.forEach { item ->
+                            val showBadge = item.route == Screen.Chat.route && chatState.hasUnreadMessages
+
                             CustomNavItem(
                                 item = item,
                                 currentRoute = currentRoute,
                                 navController = navController,
                                 activeColor = activeColor,
-                                unselectedColor = unselectedColor
+                                unselectedColor = unselectedColor,
+                                showBadge = showBadge
                             )
                         }
                     }
@@ -112,7 +125,6 @@ fun FloatingBottomBar(navController: NavController) {
             }
         }
 
-        // Floating Action Button com Gradiente Dinâmico
         Surface(
             modifier = Modifier
                 .size(64.dp)
@@ -151,7 +163,8 @@ fun CustomNavItem(
     currentRoute: String?,
     navController: NavController,
     activeColor: Color,
-    unselectedColor: Color
+    unselectedColor: Color,
+    showBadge: Boolean = false
 ) {
     val isSelected = currentRoute == item.route
 
@@ -173,12 +186,24 @@ fun CustomNavItem(
             }
             .padding(8.dp)
     ) {
-        Icon(
-            imageVector = item.icon,
-            contentDescription = item.label,
-            tint = if (isSelected) activeColor else unselectedColor,
-            modifier = Modifier.size(24.dp)
-        )
+        Box(contentAlignment = Alignment.TopEnd) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.label,
+                tint = if (isSelected) activeColor else unselectedColor,
+                modifier = Modifier.size(24.dp)
+            )
+
+            // --- BOLINHA PULSANTE ---
+            if (showBadge) {
+                PulsingNotificationBadge(
+                    modifier = Modifier.offset(x = 6.dp, y = (-4).dp),
+                    size = 10.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
         Text(
             text = item.label,
             style = MaterialTheme.typography.labelSmall,
