@@ -59,7 +59,13 @@ fun OrdersScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val azulPrimario = MaterialTheme.colorScheme.primary
-    val tabs = listOf("Em Andamento" to Icons.Default.Sync, "Histórico" to Icons.Default.History)
+
+    // --- LISTA DE ABAS COM ÍCONES ---
+    val tabs = listOf(
+        "Em Andamento" to Icons.Default.Sync,
+        "Histórico" to Icons.Default.History
+    )
+
     val currentBrandGradient = brandGradient()
 
     LaunchedEffect(authUser) {
@@ -69,31 +75,62 @@ fun OrdersScreen(
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxWidth().background(currentBrandGradient)) {
             Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                Text(text = "Meus Aluguéis", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Meus Aluguéis",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
             }
-            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.background,
+                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) // Curva 32dp
+            ) {
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.Transparent,
                     contentColor = azulPrimario,
                     indicator = { tabPositions ->
-                        Box(Modifier.tabIndicatorOffset(tabPositions[selectedTab]).height(3.dp).background(currentBrandGradient))
+                        Box(
+                            Modifier
+                                .tabIndicatorOffset(tabPositions[selectedTab])
+                                .height(3.dp)
+                                .padding(horizontal = 32.dp)
+                                .background(currentBrandGradient, CircleShape)
+                        )
                     },
-                    divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) },
+                    divider = {}, // Sem linha divisória
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     tabs.forEachIndexed { index, (title, icon) ->
                         val isSelected = selectedTab == index
                         val contentColor = if (isSelected) azulPrimario else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+
                         Tab(
                             selected = isSelected,
                             onClick = { selectedTab = index },
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(icon, null, modifier = Modifier.size(18.dp), tint = contentColor)
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = contentColor
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(title, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, fontSize = 14.sp, color = contentColor)
+                                    Text(
+                                        text = title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        color = contentColor
+                                    )
                                 }
                             }
                         )
@@ -103,7 +140,9 @@ fun OrdersScreen(
         }
 
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = azulPrimario) }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = azulPrimario)
+            }
         } else {
             val lista = if (selectedTab == 0) uiState.activeRentals else uiState.inactiveRentals
             if (lista.isEmpty()) {
@@ -111,7 +150,10 @@ fun OrdersScreen(
                     Text("Nenhum aluguel encontrado.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                 }
             } else {
-                LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
                     items(lista) { rental ->
                         RentalTicketCard(
                             rental = rental,
@@ -125,6 +167,7 @@ fun OrdersScreen(
         }
     }
 }
+
 
 @Composable
 fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
@@ -185,7 +228,6 @@ fun RentalCardBody(rental: Rental) {
     val corStatus = rental.status.color
 
     Column {
-        // Aumentado para 340.dp para ficar "quase quadrado" (aspecto mais vertical)
         Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
             AsyncImage(
                 model = rental.productImageUrl,

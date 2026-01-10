@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.SmsFailed
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -28,7 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.ui.components.GuestPlaceholder
-import com.pegai.app.ui.components.PulsingNotificationBadge // Import the new component
+import com.pegai.app.ui.components.PulsingNotificationBadge
 import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.chat.ChatListViewModel
@@ -58,7 +60,13 @@ fun ChatListScreen(
     }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Como Locador", "Como Locatário")
+
+    // --- LISTA DE ABAS COM ÍCONES ---
+    val tabs = listOf(
+        "Como Locador" to Icons.Default.Handshake,
+        "Como Locatário" to Icons.Default.ShoppingBag
+    )
+
     val currentBrandGradient = brandGradient()
 
     if (user == null) {
@@ -76,53 +84,69 @@ fun ChatListScreen(
                 .fillMaxSize()
                 .background(currentBrandGradient)
         ) {
-            // --- Header ---
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Mensagens",
-                        style = MaterialTheme.typography.titleMedium,
+                        "Mensagens",
                         color = Color.White,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
                     )
                 }
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.background,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
                 ) {
                     TabRow(
                         selectedTabIndex = selectedTab,
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.primary,
                         indicator = { tabPositions ->
+
                             Box(
-                                modifier = Modifier
+                                Modifier
                                     .tabIndicatorOffset(tabPositions[selectedTab])
                                     .height(3.dp)
-                                    .background(currentBrandGradient)
+                                    .padding(horizontal = 32.dp)
+                                    .background(currentBrandGradient, CircleShape)
                             )
                         },
-                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) },
+                        divider = {},
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        tabs.forEachIndexed { index, title ->
+                        tabs.forEachIndexed { index, (title, icon) ->
+                            val isSelected = selectedTab == index
+                            val contentColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+
                             Tab(
-                                selected = selectedTab == index,
+                                selected = isSelected,
                                 onClick = { selectedTab = index },
                                 text = {
-                                    Text(
-                                        text = title,
-                                        fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 14.sp,
-                                        color = if (selectedTab == index) MaterialTheme.colorScheme.primary else Color.Gray
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = contentColor
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = title,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 14.sp,
+                                            color = contentColor
+                                        )
+                                    }
                                 }
                             )
                         }
@@ -159,13 +183,13 @@ fun ChatListScreen(
     }
 }
 
+
 @Composable
 fun ConversationItem(
     chat: ChatSummary,
     borderGradient: Brush,
     onClick: () -> Unit
 ) {
-    // Background muda se tiver mensagem não lida
     val backgroundColor = if (chat.unreadCount > 0)
         MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
     else
@@ -181,7 +205,6 @@ fun ConversationItem(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // --- AVATAR + PULSING BADGE ---
             Box(contentAlignment = Alignment.TopEnd) {
                 Box(
                     modifier = Modifier
@@ -209,7 +232,6 @@ fun ConversationItem(
                     }
                 }
 
-                // -> PULSING DOT LOGIC HERE <-
                 if (chat.unreadCount > 0) {
                     PulsingNotificationBadge(
                         modifier = Modifier.offset(x = 2.dp, y = (-2).dp),
