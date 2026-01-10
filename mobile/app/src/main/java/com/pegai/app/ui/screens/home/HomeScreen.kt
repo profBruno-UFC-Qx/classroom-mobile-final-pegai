@@ -22,8 +22,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,6 +42,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.pegai.app.model.Category
 import com.pegai.app.model.Product
 import com.pegai.app.model.User
@@ -82,67 +89,355 @@ fun HomeScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-                .background(dynamicGradient)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-                Spacer(modifier = Modifier.height(16.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                    .background(dynamicGradient)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                HomeHeader(
-                    user = usuarioLogado,
-                    localizacao = uiState.localizacaoAtual,
-                    onLoginClick = { navController.navigate(Screen.Login.route) },
-                    onFavoritesClick = { }
-                )
+                    HomeHeader(
+                        user = usuarioLogado,
+                        localizacao = uiState.localizacaoAtual,
+                        onLoginClick = { navController.navigate(Screen.Login.route) },
+                        onFavoritesClick = { navController.navigate("favorites") },
+                        onMapClick = { viewModel.openMapModal() }
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
-                SearchBar(texto = uiState.textoPesquisa, onTextoChange = { viewModel.atualizarPesquisa(it) })
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 100.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            item(span = { GridItemSpan(2) }) {
-                CategoryRow(
-                    categorias = viewModel.categoriasFiltro,
-                    selecionada = uiState.categoriaSelecionada,
-                    onCategoriaClick = { viewModel.selecionarCategoria(it) },
-                    selectedGradient = dynamicGradient
-                )
-            }
-
-            if (uiState.produtosPopulares.isNotEmpty() && uiState.textoPesquisa.isEmpty()) {
-                item(span = { GridItemSpan(2) }) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
-                            Text("Em Alta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.TrendingUp, null, tint = Color(0xFFFF9800), modifier = Modifier.size(20.dp))
-                        }
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 8.dp)) {
-                            items(uiState.produtosPopulares) { CompactProductCard(it) }
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SearchBar(texto = uiState.textoPesquisa, onTextoChange = { viewModel.atualizarPesquisa(it) })
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
 
-            item(span = { GridItemSpan(2) }) {
-                Text("Explorar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp), color = MaterialTheme.colorScheme.onBackground)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 100.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                item(span = { GridItemSpan(2) }) {
+                    CategoryRow(
+                        categorias = viewModel.categoriasFiltro,
+                        selecionada = uiState.categoriaSelecionada,
+                        onCategoriaClick = { viewModel.selecionarCategoria(it) },
+                        selectedGradient = dynamicGradient
+                    )
+                }
+
+                if (uiState.produtosPopulares.isNotEmpty() && uiState.textoPesquisa.isEmpty()) {
+                    item(span = { GridItemSpan(2) }) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
+                                Text("Em Alta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(Icons.Default.TrendingUp, null, tint = Color(0xFFFF9800), modifier = Modifier.size(20.dp))
+                            }
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 8.dp)) {
+                                items(uiState.produtosPopulares) { CompactProductCard(it) }
+                            }
+                        }
+                    }
+                }
+
+                item(span = { GridItemSpan(2) }) {
+                    Text("Explorar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp), color = MaterialTheme.colorScheme.onBackground)
+                }
+
+                items(uiState.produtos) { produto ->
+                    ProductCard(product = produto, onClick = { navController.navigate("product_details/${produto.pid}") })
+                }
+            }
+        }
+
+        if (uiState.isMapModalVisible) {
+            LocationFilterModal(
+                radiusKm = uiState.radiusKm,
+                userLat = uiState.userLat ?: -23.55052,
+                userLng = uiState.userLng ?: -46.63330,
+                onRadiusChange = { viewModel.updateRadius(it) },
+                onDismiss = { viewModel.closeMapModal() },
+                onApply = { viewModel.closeMapModal() }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LocationFilterModal(
+    radiusKm: Float,
+    userLat: Double,
+    userLng: Double,
+    onRadiusChange: (Float) -> Unit,
+    onDismiss: () -> Unit,
+    onApply: () -> Unit
+) {
+    val userLocation = LatLng(userLat, userLng)
+    val dynamicGradient = brandGradient()
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(userLocation, 12f)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 30.dp)) {
+            Text(
+                "Filtrar por Localização",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)
+            )
+
+            // Mapa
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            ) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState,
+                    uiSettings = MapUiSettings(zoomControlsEnabled = false),
+                ) {
+                    Marker(state = MarkerState(position = userLocation), title = "Você está aqui")
+                    Circle(
+                        center = userLocation,
+                        radius = (radiusKm * 1000).toDouble(),
+                        fillColor = primaryColor.copy(alpha = 0.15f),
+                        strokeColor = primaryColor,
+                        strokeWidth = 2f
+                    )
+                }
             }
 
-            items(uiState.produtos) { produto ->
-                ProductCard(product = produto, onClick = { navController.navigate("product_details/${produto.pid}") })
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Distância do raio", fontWeight = FontWeight.Medium)
+                    
+                    Text(
+                        "${radiusKm.toInt()} km",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- SLIDER COM DEGRADÊ ---
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .padding(horizontal = 2.dp)
+                            .background(
+                                MaterialTheme.colorScheme.outlineVariant,
+                                RoundedCornerShape(2.dp)
+                            )
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = (radiusKm - 1f) / 14f)
+                            .height(6.dp)
+                            .background(dynamicGradient, RoundedCornerShape(3.dp))
+                    )
+
+                    Slider(
+                        value = radiusKm,
+                        onValueChange = onRadiusChange,
+                        valueRange = 1f..15f,
+                        steps = 14,
+                        colors = SliderDefaults.colors(
+                            thumbColor = primaryColor,
+                            activeTrackColor = Color.Transparent,
+                            inactiveTrackColor = Color.Transparent,
+                            activeTickColor = Color.Transparent,
+                            inactiveTickColor = Color.Transparent
+                        )
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("1 km", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text("15 km", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { onApply() },
+                color = Color.Transparent
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(dynamicGradient)
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Aplicar Filtro",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeHeader(
+    user: User?,
+    localizacao: String,
+    onLoginClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
+    onMapClick: () -> Unit
+) {
+    val headerButtonBg = MaterialTheme.colorScheme.surface
+    val headerButtonContent = MaterialTheme.colorScheme.primary
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (user != null) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(2.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (user.fotoUrl.isNotEmpty()) {
+                        AsyncImage(model = user.fotoUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Text(user.nome.first().toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Olá, ${user.nome.split(" ").first()} 👋",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Place, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = localizacao,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.9f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Bem-vindo ao Pegaí",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Place, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = localizacao,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.9f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (user != null) {
+                IconButton(
+                    onClick = onMapClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(headerButtonBg, CircleShape) // Cor dinâmica do Surface
+                ) {
+                    Icon(Icons.Default.Map, null, tint = headerButtonContent) // Cor dinâmica Primary
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = onFavoritesClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(headerButtonBg, CircleShape)
+                ) {
+                    Icon(Icons.Default.FavoriteBorder, null, tint = headerButtonContent)
+                }
+            } else {
+                Button(
+                    onClick = onLoginClick,
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 24.dp)
+                ) {
+                    Text("Entrar", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -183,7 +478,6 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
             Box(modifier = Modifier.fillMaxWidth().height(4.dp).background(dynamicGradient))
 
             Column(modifier = Modifier.padding(14.dp).weight(1f), verticalArrangement = Arrangement.SpaceBetween) {
-                // Título e Nota
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(product.titulo, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp)) {
@@ -194,7 +488,6 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
                 }
 
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Linha do Dono
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             modifier = Modifier.size(18.dp),
@@ -341,58 +634,6 @@ fun CategoryRow(
                             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
-                }
-            }
-        }
-    }
-}
-@Composable
-fun HomeHeader(user: User?, localizacao: String, onLoginClick: () -> Unit, onFavoritesClick: () -> Unit) {
-    val isDark = isSystemInDarkTheme()
-    val headerButtonBg = if (isDark) Color.Black else Color.White
-    val headerButtonContent = if (isDark) Color.White else Color(0xFF0E8FC6)
-
-    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (user != null) {
-                Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White).border(2.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
-                    if (user.fotoUrl.isNotEmpty()) {
-                        AsyncImage(model = user.fotoUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    } else {
-                        Text(user.nome.first().toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color(0xFF0E8FC6))
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text("Olá, ${user.nome.split(" ").first()} 👋", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Place, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(localizacao, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.9f))
-                    }
-                }
-            } else {
-                Column {
-                    Text("Bem-vindo ao Pegaí", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Place, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(localizacao, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
-                    }
-                }
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (user != null) {
-                IconButton(onClick = onFavoritesClick, modifier = Modifier.padding(end = 8.dp).size(48.dp).background(headerButtonBg, CircleShape)) {
-                    Icon(Icons.Default.FavoriteBorder, null, tint = headerButtonContent)
-                }
-                IconButton(onClick = { }, modifier = Modifier.size(48.dp).background(headerButtonBg, CircleShape)) {
-                    Icon(Icons.Outlined.Notifications, null, tint = headerButtonContent)
-                }
-            } else {
-                Button(onClick = onLoginClick, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(containerColor = headerButtonBg, contentColor = headerButtonContent), contentPadding = PaddingValues(horizontal = 24.dp)) {
-                    Text("Entrar", fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -3,7 +3,6 @@ package com.pegai.app.ui.viewmodel.home
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationServices
@@ -33,6 +32,22 @@ class HomeViewModel : ViewModel() {
     init {
         carregarDadosIniciais()
     }
+
+    // --- FUNÇÕES DO MODAL DE MAPA ---
+
+    fun openMapModal() {
+        _uiState.update { it.copy(isMapModalVisible = true) }
+    }
+
+    fun closeMapModal() {
+        _uiState.update { it.copy(isMapModalVisible = false) }
+    }
+
+    fun updateRadius(radius: Float) {
+        _uiState.update { it.copy(radiusKm = radius) }
+    }
+
+    // --------------------------------
 
     fun carregarDadosIniciais() {
         _uiState.update { it.copy(isLoading = true) }
@@ -69,7 +84,6 @@ class HomeViewModel : ViewModel() {
                 produto?.copy(pid = doc.id)
             }
 
-            // Garante que o nome do dono esteja presente
             lista.map { produto ->
                 val nomeFinal = if (produto.donoNome.isNotBlank()) produto.donoNome
                 else UserRepository.getNomeUsuario(produto.donoId)
@@ -79,8 +93,6 @@ class HomeViewModel : ViewModel() {
             emptyList()
         }
     }
-
-    // --- Filtros ---
 
     fun selecionarCategoria(categoria: String) {
         _uiState.update { it.copy(categoriaSelecionada = categoria) }
@@ -108,8 +120,6 @@ class HomeViewModel : ViewModel() {
         _uiState.update { it.copy(produtos = listaFiltrada) }
     }
 
-    // --- Geolocalização ---
-
     @SuppressLint("MissingPermission")
     fun obterLocalizacaoAtual(context: Context) {
         _uiState.update { it.copy(localizacaoAtual = "Buscando...") }
@@ -118,6 +128,14 @@ class HomeViewModel : ViewModel() {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
+                    // --- ATUALIZAÇÃO: SALVAR LAT/LNG NO ESTADO ---
+                    _uiState.update {
+                        it.copy(
+                            userLat = location.latitude,
+                            userLng = location.longitude
+                        )
+                    }
+
                     viewModelScope.launch {
                         converterCoordenadas(context, location.latitude, location.longitude)
                     }

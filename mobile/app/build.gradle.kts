@@ -74,6 +74,10 @@ dependencies {
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore-ktx:25.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
-    implementation("androidx.datastore:datastore-preferences:1.0.0") // Preferências de usuário (Persistência local)
+    // Preferências de usuário (Persistência local)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    // Google Maps
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 
 }
