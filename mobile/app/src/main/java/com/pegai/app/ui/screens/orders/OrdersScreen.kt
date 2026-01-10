@@ -33,6 +33,7 @@ import coil.compose.AsyncImage
 import com.pegai.app.model.Rental
 import com.pegai.app.model.RentalStatus
 import com.pegai.app.model.User
+import com.pegai.app.ui.components.GuestPlaceholder
 import com.pegai.app.ui.navigation.Screen
 import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
@@ -47,6 +48,17 @@ fun OrdersScreen(
 ) {
     val authUser by authViewModel.usuarioLogado.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+
+    // --- VERIFICAÇÃO DE USUÁRIO LOGADO ---
+    if (authUser == null) {
+        GuestPlaceholder(
+            title = "Acesse seus Pedidos",
+            subtitle = "Faça login para acompanhar seus aluguéis em andamento e histórico.",
+            onLoginClick = { navController.navigate("login") },
+            onRegisterClick = { navController.navigate("register") }
+        )
+        return
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val azulPrimario = MaterialTheme.colorScheme.primary
@@ -150,21 +162,37 @@ fun RentalTicketCard(rental: Rental, currentUser: User?, onClick: () -> Unit) {
         Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp), shadowElevation = 4.dp) {
             Box(modifier = Modifier.fillMaxWidth().background(currentBrandGradient).padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+
+                    // --- LADO ESQUERDO: DONO (LOCADOR) ---
                     Column(horizontalAlignment = Alignment.Start) {
                         Text(text = "Dono", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            TicketAvatar(isMe = isLocador, userPhoto = currentUser?.fotoUrl, userName = nomeLocadorDisplay, color = Color.White)
+                            TicketAvatar(
+                                isMe = isLocador,
+                                // Se eu sou o locador, usa minha foto. Se não, usa a foto que veio no Rental.
+                                userPhoto = if (isLocador) currentUser?.fotoUrl else rental.locadorFoto,
+                                userName = nomeLocadorDisplay,
+                                color = Color.White
+                            )
                             Spacer(Modifier.width(8.dp))
                             Text(text = nomeLocadorDisplay, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 100.dp))
                         }
                     }
+
                     Icon(imageVector = Icons.Default.SwapHoriz, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(32.dp))
+
+                    // --- LADO DIREITO: CLIENTE (LOCATÁRIO) ---
                     Column(horizontalAlignment = Alignment.End) {
                         Text(text = "Locatário", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(text = nomeLocatarioDisplay, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 100.dp))
                             Spacer(Modifier.width(8.dp))
-                            TicketAvatar(isMe = !isLocador, userPhoto = currentUser?.fotoUrl, userName = nomeLocatarioDisplay, color = Color.White)
+                            TicketAvatar(
+                                isMe = !isLocador,
+                                userPhoto = if (!isLocador) currentUser?.fotoUrl else rental.locatarioFoto,
+                                userName = nomeLocatarioDisplay,
+                                color = Color.White
+                            )
                         }
                     }
                 }
@@ -247,7 +275,7 @@ fun TicketAvatar(isMe: Boolean, userPhoto: String?, userName: String, color: Col
             .size(44.dp)
             .scale(if(isMe) scale else 1f)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.2f)) // Avatar fundo translúcido no ticket
+            .background(Color.White.copy(alpha = 0.2f))
             .then(if(isMe) Modifier.border(2.dp, Color.White, CircleShape) else Modifier),
         contentAlignment = Alignment.Center
     ) {

@@ -74,5 +74,6 @@ dependencies {
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore-ktx:25.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation("androidx.datastore:datastore-preferences:1.0.0") // Preferências de usuário (Persistência local)
 
 }

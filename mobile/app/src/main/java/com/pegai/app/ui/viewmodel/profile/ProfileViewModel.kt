@@ -1,6 +1,7 @@
 package com.pegai.app.ui.viewmodel.profile
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegai.app.data.data.repository.ProductRepository
@@ -42,62 +43,51 @@ class ProfileViewModel : ViewModel() {
     }
 
     fun atualizarFotoDePerfil(uri: Uri) {
-        val currentUser = _uiState.value.user ?: return
+        val currentUser = _uiState.value.user
 
+        if (currentUser == null) {
+            Log.e("ProfileViewModel", "ERRO: Usuário nulo. Não é possível enviar foto.")
+            return
+        }
+
+        Log.d("ProfileViewModel", "Iniciando upload... URI: $uri")
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
             try {
                 val novaUrl = UserRepository.atualizarFotoPerfil(currentUser.uid, uri)
-
+                Log.d("ProfileViewModel", "Sucesso! Nova URL: $novaUrl")
                 _uiState.update { state ->
                     state.copy(
                         isLoading = false,
                         user = state.user?.copy(fotoUrl = novaUrl)
                     )
                 }
+                carregarDadosUsuario(currentUser)
+
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, erro = "Erro ao atualizar foto.") }
+                Log.e("ProfileViewModel", "ERRO no upload da imagem", e)
+                _uiState.update {
+                    it.copy(isLoading = false, erro = "Falha ao enviar imagem: ${e.message}")
+                }
             }
         }
     }
 
     // --- Pix Management ---
-
-    fun abrirPixDialog() {
-        _uiState.update {
-            it.copy(
-                isPixDialogVisible = true,
-                chavePixTemp = it.chavePix
-            )
-        }
-    }
-
-    fun fecharPixDialog() {
-        _uiState.update { it.copy(isPixDialogVisible = false) }
-    }
-
-    fun atualizarChaveTemp(novaChave: String) {
-        _uiState.update { it.copy(chavePixTemp = novaChave) }
-    }
+    fun abrirPixDialog() { _uiState.update { it.copy(isPixDialogVisible = true, chavePixTemp = it.chavePix) } }
+    fun fecharPixDialog() { _uiState.update { it.copy(isPixDialogVisible = false) } }
+    fun atualizarChaveTemp(novaChave: String) { _uiState.update { it.copy(chavePixTemp = novaChave) } }
 
     fun salvarChavePix() {
         val currentUser = _uiState.value.user ?: return
         val novaChave = _uiState.value.chavePixTemp
-
         _uiState.update { it.copy(isLoading = true) }
-
         viewModelScope.launch {
             try {
                 UserRepository.atualizarChavePix(currentUser.uid, novaChave)
-
                 _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        chavePix = novaChave,
-                        isPixDialogVisible = false,
-                        user = it.user?.copy(chavePix = novaChave)
-                    )
+                    it.copy(isLoading = false, chavePix = novaChave, isPixDialogVisible = false, user = it.user?.copy(chavePix = novaChave))
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

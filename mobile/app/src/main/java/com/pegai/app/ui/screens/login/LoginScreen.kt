@@ -30,49 +30,40 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pegai.app.R
 import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
-import com.pegai.app.ui.viewmodel.login.LoginViewModel
 
 @Composable
 fun LoginScreen(
     navController: NavController,
-    authViewModel: AuthViewModel,
-    viewModel: LoginViewModel = viewModel()
+    authViewModel: AuthViewModel
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isLoading by authViewModel.isLoading.collectAsState()
+    val erro by authViewModel.erro.collectAsState()
 
     var email by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
 
-    // Reagindo ao estado de login
-    LaunchedEffect(uiState) {
-        if (uiState.erro != null) {
-            Toast.makeText(context, uiState.erro, Toast.LENGTH_LONG).show()
-        }
-        if (uiState.loginSucesso) {
-            uiState.usuario?.let { authViewModel.setUsuarioLogado(it) }
-            navController.navigate("home") {
-                popUpTo("login") { inclusive = true }
-            }
+    LaunchedEffect(erro) {
+        if (erro != null) {
+            Toast.makeText(context, erro, Toast.LENGTH_LONG).show()
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(brandGradient()) // Gradiente dinâmico (muda no dark mode)
+            .background(brandGradient())
     ) {
         Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background, // Fundo Premium ou Cinza Dark
+            color = MaterialTheme.colorScheme.background,
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
         ) {
             Column(
@@ -89,7 +80,7 @@ fun LoginScreen(
                             .size(48.dp)
                             .shadow(4.dp, CircleShape),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+                        color = MaterialTheme.colorScheme.surface
                     ) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
@@ -160,8 +151,14 @@ fun LoginScreen(
 
                 // --- Botão Entrar ---
                 Button(
-                    onClick = { viewModel.login(email, senha) },
-                    enabled = email.isNotBlank() && senha.isNotBlank() && !uiState.isLoading,
+                    onClick = {
+                        authViewModel.fazerLogin(email, senha) {
+                            navController.navigate("home") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                    },
+                    enabled = email.isNotBlank() && senha.isNotBlank() && !isLoading,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                     contentPadding = PaddingValues(),
@@ -176,7 +173,7 @@ fun LoginScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (uiState.isLoading) {
+                        if (isLoading) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                         } else {
                             Text("Entrar", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)

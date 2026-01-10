@@ -7,21 +7,23 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pegai.app.data.utils.ThemeViewModel
+import com.pegai.app.data.utils.ThemeViewModelFactory
 import com.pegai.app.ui.components.FloatingBottomBar
 import com.pegai.app.ui.screens.add.AddScreen
 import com.pegai.app.ui.screens.chat.ChatListScreen
@@ -62,7 +64,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            PegaiTheme {
+            val themeViewModel: ThemeViewModel = viewModel(
+                factory = ThemeViewModelFactory(applicationContext)
+            )
+            val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+
+            PegaiTheme(darkTheme = isDarkTheme) {
+
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
@@ -110,7 +118,11 @@ class MainActivity : ComponentActivity() {
                         composable("favorites") { FavoritesScreen() }
 
                         composable("profile") {
-                            ProfileScreen(navController = navController, authViewModel = authViewModel)
+                            ProfileScreen(
+                                navController = navController,
+                                authViewModel = authViewModel,
+                                themeViewModel = themeViewModel
+                            )
                         }
 
                         composable("chat") {

@@ -1,7 +1,6 @@
 package com.pegai.app.ui.screens.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -41,6 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pegai.app.R
+import com.pegai.app.data.utils.ThemeViewModel
 import com.pegai.app.ui.components.GuestPlaceholder
 import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
@@ -51,7 +51,8 @@ import com.pegai.app.ui.viewmodel.profile.ProfileViewModel
 fun ProfileScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(),
+    themeViewModel: ThemeViewModel
 ) {
     val authUser by authViewModel.usuarioLogado.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -59,12 +60,15 @@ fun ProfileScreen(
     var showPixManagerDialog by remember { mutableStateOf(false) }
     var tempChavePix by remember { mutableStateOf("") }
 
-    // --- ESTADO TEMPORÁRIO DO TEMA  ---
-    var isDarkTheme by remember { mutableStateOf(false) }
+    val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> uri?.let { viewModel.atualizarFotoDePerfil(it) } }
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            if (uri != null) {
+                viewModel.atualizarFotoDePerfil(uri)
+            }
+        }
     )
 
     val mainGradient = brandGradient()
@@ -116,7 +120,7 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Pix
+                            // Pix (Botão Esquerda)
                             Column(
                                 modifier = Modifier.weight(1f).clickable {
                                     tempChavePix = uiState.chavePix
@@ -139,14 +143,19 @@ fun ProfileScreen(
                                 Text("Chave PIX", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
 
-                            // Foto
+                            // --- FOTO DE PERFIL  ---
                             Column(
                                 modifier = Modifier.weight(1.8f),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Box(contentAlignment = Alignment.BottomEnd) {
                                     Box(
-                                        modifier = Modifier.size(110.dp).clip(CircleShape).background(Color.White).padding(3.dp).clip(CircleShape)
+                                        modifier = Modifier
+                                            .size(110.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White)
+                                            .padding(3.dp)
+                                            .clip(CircleShape)
                                     ) {
                                         if (uiState.isLoading) {
                                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -171,10 +180,14 @@ fun ProfileScreen(
                                         }
                                     }
 
+                                    // --- BOTÃO DO LÁPIS  ---
                                     Surface(
-                                        modifier = Modifier.size(32.dp).offset(x = (-4).dp, y = (-4).dp).clickable {
-                                            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                        },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .offset(x = (-4).dp, y = (-4).dp)
+                                            .clickable {
+                                                photoPickerLauncher.launch("image/*")
+                                            },
                                         shape = CircleShape,
                                         color = MaterialTheme.colorScheme.primary,
                                         border = BorderStroke(2.dp, Color.White),
@@ -187,7 +200,7 @@ fun ProfileScreen(
                                 }
                             }
 
-                            // Logout
+                            // Logout (Botão Direita)
                             Column(
                                 modifier = Modifier.weight(1f).clickable { authViewModel.logout() },
                                 horizontalAlignment = Alignment.CenterHorizontally
@@ -217,11 +230,13 @@ fun ProfileScreen(
                             fontSize = 14.sp
                         )
 
-                        // --- BOTÃO DE TEMA  ---
+                        // --- BOTÃO DE TEMA ---
                         Spacer(modifier = Modifier.height(20.dp))
                         ThemeSwitch(
                             isDark = isDarkTheme,
-                            onToggle = { isDarkTheme = !isDarkTheme }
+                            onToggle = {
+                                themeViewModel.toggleTheme()
+                            }
                         )
                     }
                 }
@@ -284,7 +299,7 @@ fun ProfileScreen(
                 }
             }
 
-            // --- DIÁLOGO PIX ---
+            // --- DIALOGO PIX ---
             if (showPixManagerDialog) {
                 Dialog(onDismissRequest = { showPixManagerDialog = false }) {
                     Surface(
@@ -299,48 +314,18 @@ fun ProfileScreen(
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Header do Modal
                             Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
+                                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_qrcode_pix),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
+                                Icon(painter = painterResource(id = R.drawable.ic_qrcode_pix), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                             }
-
                             Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = "Recebimento via PIX",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = "Sua chave será usada para gerar o QR Code de pagamento dos seus aluguéis.",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-
+                            Text("Recebimento via PIX", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Sua chave será usada para gerar o QR Code de pagamento dos seus aluguéis.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
                             Spacer(modifier = Modifier.height(24.dp))
-
-                            // Campo de Chave
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = "Sua Chave Pix",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-                                )
+                                Text("Sua Chave Pix", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
                                 TextField(
                                     value = tempChavePix,
                                     onValueChange = { tempChavePix = it },
@@ -357,9 +342,7 @@ fun ProfileScreen(
                                     )
                                 )
                             }
-
                             Spacer(modifier = Modifier.height(24.dp))
-
                             Button(
                                 onClick = {
                                     viewModel.atualizarChaveTemp(tempChavePix)
@@ -372,40 +355,17 @@ fun ProfileScreen(
                             ) {
                                 Text("Atualizar Chave", fontWeight = FontWeight.Bold)
                             }
-
-                            // Área do QR Code
                             if (uiState.chavePix.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(32.dp))
-
-                                Text(
-                                    text = "QR Code de Recebimento",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-
+                                Text("QR Code de Recebimento", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.height(12.dp))
-
-                                // Card do QR Code
-                                Surface(
-                                    modifier = Modifier
-                                        .size(200.dp)
-                                        .shadow(4.dp, RoundedCornerShape(20.dp)),
-                                    color = Color.White,
-                                    shape = RoundedCornerShape(20.dp)
-                                ) {
+                                Surface(modifier = Modifier.size(200.dp).shadow(4.dp, RoundedCornerShape(20.dp)), color = Color.White, shape = RoundedCornerShape(20.dp)) {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(16.dp)) {
-                                        AsyncImage(
-                                            model = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${uiState.chavePix}",
-                                            contentDescription = "QR Code Pix",
-                                            modifier = Modifier.fillMaxSize()
-                                        )
+                                        AsyncImage(model = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${uiState.chavePix}", contentDescription = "QR Code Pix", modifier = Modifier.fillMaxSize())
                                     }
                                 }
                             }
-
                             Spacer(modifier = Modifier.height(24.dp))
-
                             TextButton(onClick = { showPixManagerDialog = false }) {
                                 Text("Agora não", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                             }
@@ -417,7 +377,6 @@ fun ProfileScreen(
     }
 }
 
-// --- COMPONENTE DO INTERRUPTOR DE TEMA  ---
 @Composable
 fun ThemeSwitch(
     isDark: Boolean,
@@ -459,20 +418,24 @@ fun ThemeSwitch(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // LADO ESQUERDO
                 Icon(
-                    imageVector = Icons.Rounded.DarkMode,
+                    imageVector = Icons.Rounded.WbSunny,
                     contentDescription = null,
                     tint = if (isDark) primaryBlue.copy(alpha = 0.6f) else Color.Transparent,
                     modifier = Modifier.size(22.dp)
                 )
+
+                // LADO DIREITO
                 Icon(
-                    imageVector = Icons.Rounded.WbSunny,
+                    imageVector = Icons.Rounded.DarkMode,
                     contentDescription = null,
                     tint = if (!isDark) primaryBlue.copy(alpha = 0.6f) else Color.Transparent,
                     modifier = Modifier.size(22.dp)
                 )
             }
 
+            // BOLINHA
             Box(
                 modifier = Modifier
                     .offset(x = thumbOffset)
