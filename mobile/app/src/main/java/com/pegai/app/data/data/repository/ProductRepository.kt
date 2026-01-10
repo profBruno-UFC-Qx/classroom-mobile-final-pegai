@@ -4,8 +4,10 @@ import android.net.Uri
 import android.util.Log
 import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import com.pegai.app.model.Product
+import com.pegai.app.model.Review
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -53,6 +55,22 @@ object ProductRepository {
             snapshot.count.toInt()
         } catch (e: Exception) {
             0
+        }
+    }
+
+    suspend fun getProductReviews(productId: String): List<Review> {
+        return try {
+            val snapshot = db.collection("products")
+                .document(productId)
+                .collection("reviews")
+                .orderBy("data", Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            snapshot.toObjects(Review::class.java)
+        } catch (e: Exception) {
+            Log.e("ProductRepo", "Erro ao buscar reviews do produto", e)
+            emptyList()
         }
     }
 

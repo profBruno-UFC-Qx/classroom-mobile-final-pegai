@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegai.app.model.ChatMessage
 import com.pegai.app.model.RentalStatus
+import com.pegai.app.model.Review
 import com.pegai.app.repository.ChatRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +67,6 @@ class ChatViewModel : ViewModel() {
                     }
                 }
             }
-
             launch {
                 repository.getMessages(chatId).collect { msgs ->
                     _uiState.update { state -> state.copy(messages = msgs) }
@@ -91,8 +91,7 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    // --- Rental Workflow State Machine ---
-
+    // --- RENTAL FLOW ---
     fun aceitarSolicitacao() {
         currentChatId?.let { id ->
             viewModelScope.launch {
@@ -166,21 +165,85 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    // --- Calculations ---
+    // --- REVIEWS (ATUALIZADO PARA ENVIAR CHAT_ID) ---
 
+    fun enviarAvaliacaoProduto(rating: Int, comment: String) {
+        val currentUserId = _uiState.value.currentUserId
+        val productId = _uiState.value.chatRoom?.productId ?: return
+        val chatId = currentChatId ?: return // <--- Checagem do ID do chat
+
+        viewModelScope.launch {
+            val autorData = repository.getUserData(currentUserId)
+
+            val review = Review(
+                autorId = currentUserId,
+                autorNome = autorData.first,
+                autorFoto = autorData.second,
+                nota = rating,
+                comentario = comment,
+                data = System.currentTimeMillis()
+            )
+            // Agora passamos o chatId para atualizar a flag de bloqueio
+            repository.saveProductReview(productId, chatId, review)
+            enviarMensagem("⭐ Avaliei o produto com nota $rating!")
+        }
+    }
+
+    fun enviarAvaliacaoDono(rating: Int, comment: String) {
+        val currentUserId = _uiState.value.currentUserId
+        val ownerId = _uiState.value.chatRoom?.ownerId ?: return
+        val chatId = currentChatId ?: return
+
+        viewModelScope.launch {
+            val autorData = repository.getUserData(currentUserId)
+
+            val review = Review(
+                autorId = currentUserId,
+                autorNome = autorData.first,
+                autorFoto = autorData.second,
+                nota = rating,
+                comentario = comment,
+                papel = "LOCADOR",
+                data = System.currentTimeMillis()
+            )
+
+            repository.saveUserReview(ownerId, chatId, review)
+            enviarMensagem("⭐ Avaliei o proprietário com nota $rating!")
+        }
+    }
+
+    fun enviarAvaliacaoLocatario(rating: Int, comment: String) {
+        val currentUserId = _uiState.value.currentUserId
+        val renterId = _uiState.value.chatRoom?.renterId ?: return
+        val chatId = currentChatId ?: return
+
+        viewModelScope.launch {
+            val autorData = repository.getUserData(currentUserId)
+
+            val review = Review(
+                autorId = currentUserId,
+                autorNome = autorData.first,
+                autorFoto = autorData.second,
+                nota = rating,
+                comentario = comment,
+                papel = "LOCATARIO",
+                data = System.currentTimeMillis()
+            )
+
+            repository.saveUserReview(renterId, chatId, review)
+            enviarMensagem("⭐ Avaliei o locatário com nota $rating!")
+        }
+    }
+
+    // --- CALCULATIONS ---
     fun simularValoresAluguel(startMillis: Long?, endMillis: Long?, pricePerDay: Double) {
         if (startMillis != null && endMillis != null) {
             val diff = endMillis - startMillis
             val dias = TimeUnit.MILLISECONDS.toDays(diff).coerceAtLeast(1).toInt()
             val total = dias * pricePerDay
-
-            _uiState.update {
-                it.copy(diasCalculados = dias, totalCalculado = total)
-            }
+            _uiState.update { it.copy(diasCalculados = dias, totalCalculado = total) }
         } else {
-            _uiState.update {
-                it.copy(diasCalculados = 0, totalCalculado = 0.0)
-            }
+            _uiState.update { it.copy(diasCalculados = 0, totalCalculado = 0.0) }
         }
     }
 }

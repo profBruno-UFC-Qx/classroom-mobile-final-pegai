@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -29,12 +28,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.pegai.app.data.data.utils.formatarTempo
 import com.pegai.app.model.Product
-import com.pegai.app.model.UserAvaliacao
+import com.pegai.app.model.Review
 import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.publicprofile.PublicProfileViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun PublicProfileScreen(
@@ -54,7 +55,7 @@ fun PublicProfileScreen(
     val mainColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background, // Dinâmico
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
 
@@ -111,7 +112,7 @@ fun PublicProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = uiState.user!!.nome.first().toString(),
+                                        text = uiState.user!!.nome.take(1).uppercase(),
                                         fontSize = 40.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = mainColor
@@ -142,7 +143,7 @@ fun PublicProfileScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Voltar",
-                            tint = Color(0xFF0E8FC6) // Mantido para contraste no botão branco
+                            tint = Color(0xFF0E8FC6)
                         )
                     }
                 }
@@ -241,7 +242,8 @@ fun PublicProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val papelFiltro = if (selectedReviewTab == 0) "locador" else "locatario"
+                    val papelFiltro = if (selectedReviewTab == 0) "LOCADOR" else "LOCATARIO"
+
                     val avaliacoesFiltradas = uiState.avaliacoes.filter {
                         it.papel.equals(papelFiltro, ignoreCase = true)
                     }
@@ -349,7 +351,7 @@ fun ProductCardSmall(produto: Product, mainColor: Color) {
 }
 
 @Composable
-fun ReviewCardReal(avaliacao: UserAvaliacao) {
+fun ReviewCardReal(avaliacao: Review) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -370,7 +372,7 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = avaliacao.autorNome.take(1).uppercase(),
+                        text = if(avaliacao.autorNome.isNotEmpty()) avaliacao.autorNome.take(1).uppercase() else "?",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -386,7 +388,7 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(avaliacao.autorNome, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text(formatarTempo(avaliacao.data), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(formatarDataLong(avaliacao.data), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
 
                 Row(modifier = Modifier.padding(vertical = 4.dp)) {
@@ -409,4 +411,10 @@ fun ReviewCardReal(avaliacao: UserAvaliacao) {
             }
         }
     }
+}
+
+// Long -> String
+private fun formatarDataLong(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }

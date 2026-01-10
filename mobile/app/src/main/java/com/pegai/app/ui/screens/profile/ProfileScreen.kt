@@ -3,6 +3,9 @@ package com.pegai.app.ui.screens.profile
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,13 +19,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -42,8 +46,6 @@ import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.profile.ProfileViewModel
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.nativeCanvas
 
 @Composable
 fun ProfileScreen(
@@ -57,12 +59,14 @@ fun ProfileScreen(
     var showPixManagerDialog by remember { mutableStateOf(false) }
     var tempChavePix by remember { mutableStateOf("") }
 
+    // --- ESTADO TEMPORÁRIO DO TEMA  ---
+    var isDarkTheme by remember { mutableStateOf(false) }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri -> uri?.let { viewModel.atualizarFotoDePerfil(it) } }
     )
 
-    // Usando o gradiente dinâmico do tema
     val mainGradient = brandGradient()
 
     LaunchedEffect(authUser) {
@@ -81,11 +85,11 @@ fun ProfileScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background) // Fundo dinâmico
+                    .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
             ) {
                 // --- CABEÇALHO ---
-                Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().height(480.dp)) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -212,6 +216,13 @@ fun ProfileScreen(
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 14.sp
                         )
+
+                        // --- BOTÃO DE TEMA  ---
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ThemeSwitch(
+                            isDark = isDarkTheme,
+                            onToggle = { isDarkTheme = !isDarkTheme }
+                        )
                     }
                 }
 
@@ -274,12 +285,11 @@ fun ProfileScreen(
             }
 
             // --- DIÁLOGO PIX ---
-            // --- DIÁLOGO PIX (ESTILO SÓLIDO E MODERNO) ---
             if (showPixManagerDialog) {
                 Dialog(onDismissRequest = { showPixManagerDialog = false }) {
                     Surface(
                         shape = RoundedCornerShape(28.dp),
-                        color = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza Escuro no Dark
+                        color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 8.dp,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     ) {
@@ -376,7 +386,7 @@ fun ProfileScreen(
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                // Card do QR Code com fundo branco sólido para leitura
+                                // Card do QR Code
                                 Surface(
                                     modifier = Modifier
                                         .size(200.dp)
@@ -404,6 +414,89 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+}
+
+// --- COMPONENTE DO INTERRUPTOR DE TEMA  ---
+@Composable
+fun ThemeSwitch(
+    isDark: Boolean,
+    onToggle: () -> Unit
+) {
+    val switchWidth = 90.dp
+    val switchHeight = 48.dp
+    val thumbSize = 40.dp
+    val padding = 4.dp
+
+    val primaryBlue = MaterialTheme.colorScheme.primary
+
+    val trackColor by animateColorAsState(
+        targetValue = if (isDark) Color(0xFF303030) else Color.White,
+        animationSpec = tween(500),
+        label = "trackColor"
+    )
+
+    val thumbOffset by animateDpAsState(
+        targetValue = if (isDark) switchWidth - thumbSize - padding else padding,
+        animationSpec = tween(500),
+        label = "thumbOffset"
+    )
+
+    val labelText = if (isDark) "Modo Escuro" else "Modo Claro"
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(width = switchWidth, height = switchHeight)
+                .clip(CircleShape)
+                .background(trackColor)
+                .border(2.dp, primaryBlue.copy(alpha = 0.2f), CircleShape)
+                .clickable { onToggle() },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.DarkMode,
+                    contentDescription = null,
+                    tint = if (isDark) primaryBlue.copy(alpha = 0.6f) else Color.Transparent,
+                    modifier = Modifier.size(22.dp)
+                )
+                Icon(
+                    imageVector = Icons.Rounded.WbSunny,
+                    contentDescription = null,
+                    tint = if (!isDark) primaryBlue.copy(alpha = 0.6f) else Color.Transparent,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .offset(x = thumbOffset)
+                    .size(thumbSize)
+                    .clip(CircleShape)
+                    .background(primaryBlue),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isDark) Icons.Rounded.DarkMode else Icons.Rounded.WbSunny,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = labelText,
+            fontSize = 12.sp,
+            color = Color.White.copy(alpha = 0.8f),
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

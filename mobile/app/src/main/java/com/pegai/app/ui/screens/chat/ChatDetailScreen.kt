@@ -9,11 +9,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +26,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,6 +61,9 @@ fun ChatDetailScreen(
 
     var messageText by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showProductReview by remember { mutableStateOf(false) }
+    var showOwnerReview by remember { mutableStateOf(false) }
+    var showRenterReview by remember { mutableStateOf(false) }
 
     val currentBrandGradient = brandGradient()
     val azulTema = MaterialTheme.colorScheme.primary
@@ -100,6 +108,12 @@ fun ChatDetailScreen(
                         RentalStatusTicket(
                             status = statusEnum,
                             isOwner = isOwner,
+
+                            // Flags de controle visual
+                            isProductReviewed = chatRoom?.isProductReviewed ?: false,
+                            isOwnerReviewed = chatRoom?.isOwnerReviewed ?: false,
+                            isRenterReviewed = chatRoom?.isRenterReviewed ?: false,
+
                             startDate = chatRoom?.contract?.startDate ?: "",
                             endDate = chatRoom?.contract?.endDate ?: "",
                             totalValue = chatRoom?.contract?.totalPrice ?: 0.0,
@@ -110,7 +124,10 @@ fun ChatDetailScreen(
                             onOwnerConfirmDelivery = { viewModel.confirmarEntregaDono() },
                             onRenterConfirmReceipt = { viewModel.confirmarRecebimentoLocatario() },
                             onRenterSignalReturn = { viewModel.sinalizarDevolucao() },
-                            onOwnerConfirmReturn = { viewModel.confirmarDevolucaoFinal() }
+                            onOwnerConfirmReturn = { viewModel.confirmarDevolucaoFinal() },
+                            onRateProduct = { showProductReview = true },
+                            onRateOwner = { showOwnerReview = true },
+                            onRateRenter = { showRenterReview = true }
                         )
                     }
                 }
@@ -161,6 +178,7 @@ fun ChatDetailScreen(
             }
         }
 
+        // --- MODAIS EXISTENTES ---
         if (showDatePicker) {
             RentalDatePickerSheet(
                 dailyPrice = chatRoom?.contract?.price ?: 0.0,
@@ -173,6 +191,47 @@ fun ChatDetailScreen(
                 onConfirm = { start, end, total ->
                     viewModel.definirDatas(start, end, total)
                     showDatePicker = false
+                }
+            )
+        }
+
+        // --- MODAIS DE AVALIAÇÃO ---
+
+        // Avaliar Produto
+        if (showProductReview) {
+            ReviewBottomSheet(
+                title = "Avaliar Produto",
+                subtitle = "O que você achou do item alugado?",
+                onDismiss = { showProductReview = false },
+                onConfirm = { rating, comment ->
+                    viewModel.enviarAvaliacaoProduto(rating, comment)
+                    showProductReview = false
+                }
+            )
+        }
+
+        // Avaliar Dono
+        if (showOwnerReview) {
+            ReviewBottomSheet(
+                title = "Avaliar Proprietário",
+                subtitle = "Como foi a negociação com $userName?",
+                onDismiss = { showOwnerReview = false },
+                onConfirm = { rating, comment ->
+                    viewModel.enviarAvaliacaoDono(rating, comment)
+                    showOwnerReview = false
+                }
+            )
+        }
+
+        // Avaliar Locatário
+        if (showRenterReview) {
+            ReviewBottomSheet(
+                title = "Avaliar Locatário",
+                subtitle = "Como foi a experiência com $userName?",
+                onDismiss = { showRenterReview = false },
+                onConfirm = { rating, comment ->
+                    viewModel.enviarAvaliacaoLocatario(rating, comment)
+                    showRenterReview = false
                 }
             )
         }
@@ -221,12 +280,12 @@ fun ChatHeaderInternal(
             border = BorderStroke(1.dp, gradient)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), // Aumentado (era 12h, 6v)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Person, null, tint = mainColor, modifier = Modifier.size(18.dp)) // Ícone levemente maior
+                Icon(Icons.Default.Person, null, tint = mainColor, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "Ver Perfil", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = mainColor) // Fonte aumentada
+                Text(text = "Ver Perfil", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = mainColor)
             }
         }
     }
@@ -275,5 +334,119 @@ fun ChatLockedBar() {
         Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Text("Chat bloqueado nesta etapa.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), fontSize = 13.sp)
+    }
+}
+
+// --- ReviewBottomSheet ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReviewBottomSheet(
+    title: String,
+    subtitle: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, String) -> Unit
+) {
+    val modalBottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var rating by remember { mutableIntStateOf(0) }
+    var comment by remember { mutableStateOf("") }
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = modalBottomSheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)) }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Estrelas Interativas
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                for (i in 1..5) {
+                    Icon(
+                        imageVector = if (i <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = "Estrela $i",
+                        tint = if (i <= rating) Color(0xFFFFB300) else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .clickable { rating = i }
+                            .padding(4.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = if (rating > 0) "$rating/5" else "Toque para avaliar",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (rating > 0) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Campo de Comentário
+            OutlinedTextField(
+                value = comment,
+                onValueChange = { comment = it },
+                label = { Text("Deixe um comentário (opcional)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = primaryColor,
+                    focusedLabelColor = primaryColor,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Botão Confirmar
+            Button(
+                onClick = { onConfirm(rating, comment) },
+                enabled = rating > 0,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = primaryColor,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                )
+            ) {
+                Text("Enviar Avaliação", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }

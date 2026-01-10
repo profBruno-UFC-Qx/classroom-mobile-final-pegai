@@ -1,5 +1,7 @@
 package com.pegai.app.model
 
+import com.google.firebase.firestore.PropertyName
+
 data class RentalContract(
     val startDate: String = "",
     val endDate: String = "",
@@ -17,7 +19,16 @@ data class ChatRoom(
     val status: String = "PENDING",
     val lastMessage: String = "",
     val updatedAt: Long = 0,
-    val contract: RentalContract = RentalContract()
+    val contract: RentalContract = RentalContract(),
+
+    @get:PropertyName("isProductReviewed")
+    val isProductReviewed: Boolean = false,
+
+    @get:PropertyName("isOwnerReviewed")
+    val isOwnerReviewed: Boolean = false,
+
+    @get:PropertyName("isRenterReviewed")
+    val isRenterReviewed: Boolean = false
 )
 
 data class ChatMessage(

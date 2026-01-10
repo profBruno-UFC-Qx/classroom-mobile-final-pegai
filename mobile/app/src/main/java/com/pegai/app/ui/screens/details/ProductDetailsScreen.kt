@@ -2,6 +2,7 @@ package com.pegai.app.ui.screens.details
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -97,7 +98,6 @@ fun ProductDetailsScreen(
                 .padding(bottom = paddingValues.calculateBottomPadding())
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Header dinâmico no topo
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -209,8 +209,9 @@ fun ProductDetailsScreen(
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
-                        Text(" ${product.nota} ", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
-                        Text("• ${uiState.avaliacoesCount} Avaliações", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+                        // Mostra a nota agregada e o total de reviews
+                        Text(" ${String.format("%.1f", product.nota)} ", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                        Text("• ${product.totalAvaliacoes} Avaliações", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -230,8 +231,32 @@ fun ProductDetailsScreen(
                         }
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                                Text(text = uiState.nomeDono.firstOrNull()?.toString() ?: "U", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+
+                            // --- LÓGICA DA FOTO DO DONO ---
+                            if (uiState.fotoDono.isNotEmpty()) {
+                                AsyncImage(
+                                    model = uiState.fotoDono,
+                                    contentDescription = "Foto do dono",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = uiState.nomeDono.firstOrNull()?.toString() ?: "U",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -264,7 +289,7 @@ fun ProductDetailsScreen(
             }
         }
 
-        // --- Dialogs Adaptados ---
+        // --- Dialogs ---
         if (showRentalConfirmationDialog) {
             AlertDialog(
                 onDismissRequest = { showRentalConfirmationDialog = false },
@@ -369,9 +394,7 @@ fun BottomRentBar(price: String, onRentClick: () -> Unit, gradient: Brush) {
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    @Suppress("UNCHECKED_CAST")
                     Text("Valor: ", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
-                    @Suppress("UNCHECKED_CAST")
                     Text(price, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
                 }
                 Button(

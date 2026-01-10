@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.toObject
+import com.pegai.app.data.data.repository.ProductRepository
 import com.pegai.app.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class ProductDetailsViewModel : ViewModel() {
@@ -28,24 +30,36 @@ class ProductDetailsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // 1. Carrega o Produto
                 val doc = db.collection("products").document(productId).get().await()
                 val produto = doc.toObject<Product>()?.copy(pid = doc.id)
 
                 if (produto != null) {
-                    val nomeDono = carregarNomeDono(produto.donoId)
 
-                    // Fallback: usa 'imageUrl' se a lista de imagens estiver vazia
+                    // 2. Carrega Dados do Dono (Nome e Foto)
+                    var nomeDono = "Anônimo"
+                    var fotoDono = ""
+
+                    if (produto.donoId.isNotBlank()) {
+                        val userDoc = db.collection("users").document(produto.donoId).get().await()
+                        nomeDono = userDoc.getString("nome") ?: userDoc.getString("name") ?: "Anônimo"
+                        fotoDono = userDoc.getString("fotoUrl") ?: userDoc.getString("foto") ?: ""
+                    }
+
+                    // Fallback de imagens
                     val listaImagens = produto.imagens.ifEmpty {
                         if (produto.imageUrl.isNotEmpty()) listOf(produto.imageUrl) else emptyList()
                     }
 
-                    val reviewsReais = carregarReviewsDoFirebase(productId)
+                    // 3. Carrega Reviews
+                    val reviewsReais = carregarReviewsDoRepository(productId)
 
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             produto = produto,
                             nomeDono = nomeDono,
+                            fotoDono = fotoDono, // <--- Salvando a foto no estado
                             avaliacoesCount = reviewsReais.size,
                             imagensCarrossel = listaImagens,
                             reviews = reviewsReais
@@ -61,42 +75,24 @@ class ProductDetailsViewModel : ViewModel() {
         }
     }
 
-    private suspend fun carregarNomeDono(donoId: String): String {
-        return try {
-            if (donoId.isBlank()) return "Anônimo"
-            val doc = db.collection("users").document(donoId).get().await()
-            doc.getString("nome") ?: "Anônimo"
-        } catch (e: Exception) {
-            "Desconhecido"
+    private suspend fun carregarReviewsDoRepository(produtoId: String): List<ReviewUI> {
+        val reviewsModel = ProductRepository.getProductReviews(produtoId)
+        return reviewsModel.map { review ->
+            ReviewUI(
+                authorName = if(review.autorNome.isNotEmpty()) review.autorNome else "Usuário",
+                comment = review.comentario,
+                rating = review.nota,
+                date = formatarDataLong(review.data)
+            )
         }
     }
 
-    private suspend fun carregarReviewsDoFirebase(produtoId: String): List<ReviewUI> {
+    private fun formatarDataLong(timestamp: Long): String {
         return try {
-            val snapshot = db.collection("avaliacao")
-                .whereEqualTo("produtoId", produtoId)
-                .get()
-                .await()
-
-            snapshot.documents.map { doc ->
-                val nomeAutor = doc.getString("autorNome") ?: "Usuário"
-                val comentario = doc.getString("comentario") ?: doc.getString("texto") ?: ""
-                val nota = doc.getDouble("nota")?.toInt() ?: 5
-
-                val dataObj = doc.getDate("data")
-                val dataFormatada = dataObj?.let {
-                    SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR")).format(it)
-                } ?: ""
-
-                ReviewUI(
-                    authorName = nomeAutor,
-                    comment = comentario,
-                    rating = nota,
-                    date = dataFormatada
-                )
-            }
+            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR"))
+            sdf.format(Date(timestamp))
         } catch (e: Exception) {
-            emptyList()
+            ""
         }
     }
 }

@@ -3,7 +3,8 @@ package com.pegai.app.ui.viewmodel.publicprofile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegai.app.data.data.repository.UserRepository
-import com.pegai.app.model.UserAvaliacao
+import com.pegai.app.model.Review
+import com.pegai.app.repository.ChatRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +13,8 @@ import kotlinx.coroutines.launch
 
 class PublicProfileViewModel : ViewModel() {
 
-    // Inicializa com o estado padrão (Loading)
+    private val chatRepository = ChatRepository()
+
     private val _uiState = MutableStateFlow(PublicProfileUiState())
     val uiState: StateFlow<PublicProfileUiState> = _uiState.asStateFlow()
 
@@ -22,7 +24,7 @@ class PublicProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val usuario = UserRepository.getUsuarioPorId(userId)
-                val listaAvaliacoes = UserRepository.getTodasAvaliacoes(userId)
+                val listaAvaliacoes = chatRepository.getUserReviews(userId)
 
                 _uiState.update {
                     it.copy(

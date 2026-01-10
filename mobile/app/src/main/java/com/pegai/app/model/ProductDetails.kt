@@ -19,10 +19,3 @@ data class ProductOwner(
     val rating: String,
     val photoUrl: String
 )
-
-data class Review(
-    val authorName: String,
-    val comment: String,
-    val rating: Int,
-    val date: String
-)
