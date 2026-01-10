@@ -316,14 +316,31 @@ fun ChatHeaderInternal(
 
 @Composable
 fun MessageBubbleRelative(msg: ChatMessage, isMe: Boolean, azulTema: Color) {
-    val bubbleShape = if (isMe) RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp) else RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start) {
+    val bubbleShape = if (isMe)
+        RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
+    else
+        RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+    ) {
         Surface(
             color = if (isMe) azulTema else MaterialTheme.colorScheme.surfaceVariant,
             shape = bubbleShape,
-            shadowElevation = 1.dp
+            shadowElevation = 1.dp,
+            modifier = Modifier
+                .widthIn(max = 300.dp)
         ) {
-            Text(text = msg.text, color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(12.dp), fontSize = 15.sp)
+            Text(
+                text = msg.text,
+                color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(12.dp),
+                fontSize = 15.sp,
+                textAlign = TextAlign.Start
+            )
         }
     }
 }
