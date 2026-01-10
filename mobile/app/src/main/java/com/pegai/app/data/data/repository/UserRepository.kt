@@ -63,7 +63,7 @@ object UserRepository {
             db.collection("users").document(userId)
                 .set(data, SetOptions.merge())
                 .await()
-            
+
             downloadUrl
 
         } catch (e: Exception) {

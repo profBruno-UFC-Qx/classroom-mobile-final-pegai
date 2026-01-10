@@ -1,5 +1,6 @@
 package com.pegai.app.ui.screens.chat
 
+import android.media.MediaPlayer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.pegai.app.R
 import com.pegai.app.model.ChatMessage
 import com.pegai.app.model.RentalStatus
 import com.pegai.app.ui.navigation.Screen
@@ -52,6 +55,29 @@ fun ChatDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by authViewModel.usuarioLogado.collectAsState()
+    val context = LocalContext.current
+
+    // --- CONFIGURAÇÃO DE SONS ---
+    val sfxSend = remember { MediaPlayer.create(context, R.raw.send_message) }
+    val sfxReceive = remember { MediaPlayer.create(context, R.raw.receive_message) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            sfxSend?.release()
+            sfxReceive?.release()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.playSoundEvent.collect { shouldPlay ->
+            if (shouldPlay) {
+                if (sfxReceive?.isPlaying == true) {
+                    sfxReceive.seekTo(0)
+                }
+                sfxReceive?.start()
+            }
+        }
+    }
 
     LaunchedEffect(chatId, currentUser) {
         if (chatId != null && currentUser != null) {
@@ -108,12 +134,9 @@ fun ChatDetailScreen(
                         RentalStatusTicket(
                             status = statusEnum,
                             isOwner = isOwner,
-
-                            // Flags de controle visual
                             isProductReviewed = chatRoom?.isProductReviewed ?: false,
                             isOwnerReviewed = chatRoom?.isOwnerReviewed ?: false,
                             isRenterReviewed = chatRoom?.isRenterReviewed ?: false,
-
                             startDate = chatRoom?.contract?.startDate ?: "",
                             endDate = chatRoom?.contract?.endDate ?: "",
                             totalValue = chatRoom?.contract?.totalPrice ?: 0.0,
@@ -146,6 +169,11 @@ fun ChatDetailScreen(
                                 onTextChange = { messageText = it },
                                 onSend = {
                                     if (messageText.isNotBlank()) {
+                                        if (sfxSend?.isPlaying == true) {
+                                            sfxSend.seekTo(0)
+                                        }
+                                        sfxSend?.start()
+
                                         viewModel.enviarMensagem(messageText)
                                         messageText = ""
                                     }
@@ -196,8 +224,6 @@ fun ChatDetailScreen(
         }
 
         // --- MODAIS DE AVALIAÇÃO ---
-
-        // Avaliar Produto
         if (showProductReview) {
             ReviewBottomSheet(
                 title = "Avaliar Produto",
@@ -209,8 +235,6 @@ fun ChatDetailScreen(
                 }
             )
         }
-
-        // Avaliar Dono
         if (showOwnerReview) {
             ReviewBottomSheet(
                 title = "Avaliar Proprietário",
@@ -222,8 +246,6 @@ fun ChatDetailScreen(
                 }
             )
         }
-
-        // Avaliar Locatário
         if (showRenterReview) {
             ReviewBottomSheet(
                 title = "Avaliar Locatário",

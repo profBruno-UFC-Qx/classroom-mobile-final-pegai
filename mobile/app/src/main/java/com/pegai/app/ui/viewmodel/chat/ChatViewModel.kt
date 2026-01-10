@@ -7,8 +7,11 @@ import com.pegai.app.model.RentalStatus
 import com.pegai.app.model.Review
 import com.pegai.app.repository.ChatRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -20,14 +23,20 @@ class ChatViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
+    private val _playSoundEvent = MutableSharedFlow<Boolean>()
+    val playSoundEvent: SharedFlow<Boolean> = _playSoundEvent.asSharedFlow()
+
     private var currentChatId: String? = null
     private var jobsEscuta: Job? = null
+
+    private var isFirstLoad = true
 
     fun inicializarChat(chatId: String, userId: String) {
         if (currentChatId == chatId && _uiState.value.currentUserId == userId) return
 
         currentChatId = chatId
         jobsEscuta?.cancel()
+        isFirstLoad = true
 
         _uiState.update {
             it.copy(
@@ -69,7 +78,20 @@ class ChatViewModel : ViewModel() {
             }
             launch {
                 repository.getMessages(chatId).collect { msgs ->
+                    val currentMessages = _uiState.value.messages
+
+                    if (!isFirstLoad && msgs.size > currentMessages.size) {
+                        val lastMsg = msgs.lastOrNull()
+                        if (lastMsg != null && lastMsg.senderId != userId) {
+                            _playSoundEvent.emit(true)
+                        }
+                    }
+
                     _uiState.update { state -> state.copy(messages = msgs) }
+
+                    if (msgs.isNotEmpty()) {
+                        isFirstLoad = false
+                    }
                 }
             }
         }
@@ -165,12 +187,12 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    // --- REVIEWS (ATUALIZADO PARA ENVIAR CHAT_ID) ---
+    // --- REVIEWS ---
 
     fun enviarAvaliacaoProduto(rating: Int, comment: String) {
         val currentUserId = _uiState.value.currentUserId
         val productId = _uiState.value.chatRoom?.productId ?: return
-        val chatId = currentChatId ?: return // <--- Checagem do ID do chat
+        val chatId = currentChatId ?: return
 
         viewModelScope.launch {
             val autorData = repository.getUserData(currentUserId)
@@ -183,7 +205,6 @@ class ChatViewModel : ViewModel() {
                 comentario = comment,
                 data = System.currentTimeMillis()
             )
-            // Agora passamos o chatId para atualizar a flag de bloqueio
             repository.saveProductReview(productId, chatId, review)
             enviarMensagem("⭐ Avaliei o produto com nota $rating!")
         }
