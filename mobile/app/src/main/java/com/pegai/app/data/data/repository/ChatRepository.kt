@@ -8,6 +8,7 @@ import com.google.firebase.firestore.toObject
 import com.pegai.app.model.ChatMessage
 import com.pegai.app.model.ChatRoom
 import com.pegai.app.model.Product
+import com.pegai.app.model.RentalContract
 import com.pegai.app.model.Review
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -83,12 +84,17 @@ class ChatRepository {
     }
 
     fun updateContract(chatId: String, startDate: String, endDate: String, totalPrice: Double) {
-        val updates = mapOf(
+        val docRef = db.collection("chats").document(chatId)
+
+        val updates = hashMapOf<String, Any>(
             "contract.startDate" to startDate,
             "contract.endDate" to endDate,
             "contract.totalPrice" to totalPrice
         )
-        db.collection("chats").document(chatId).update(updates)
+
+        docRef.update(updates)
+            .addOnSuccessListener { android.util.Log.d("ChatRepo", "Preço $totalPrice salvo com sucesso!") }
+            .addOnFailureListener { e -> android.util.Log.e("ChatRepo", "Erro no Firestore", e) }
     }
 
     fun getChatsAsOwner(userId: String): Flow<List<ChatRoom>> = callbackFlow {
@@ -135,6 +141,9 @@ class ChatRepository {
                 status = "PENDING",
                 lastMessage = "Tenho interesse no aluguel.",
                 updatedAt = System.currentTimeMillis(),
+                contract = RentalContract(
+                    price = product.preco // AQUI: Agora o multiplicador não será 0
+                ),
                 unreadCounts = mapOf(ownerId to 1, renterId to 0)
             )
             val docRef = db.collection("chats").add(novoChat).await()

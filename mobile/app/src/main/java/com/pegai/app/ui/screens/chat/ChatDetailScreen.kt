@@ -216,8 +216,8 @@ fun ChatDetailScreen(
                 onDateSelectionChanged = { start, end ->
                     viewModel.simularValoresAluguel(start, end, chatRoom?.contract?.price ?: 0.0)
                 },
-                onConfirm = { start, end, total ->
-                    viewModel.definirDatas(start, end, total)
+                onConfirm = { start, end, _ ->
+                    viewModel.definirDatas(start, end)
                     showDatePicker = false
                 }
             )

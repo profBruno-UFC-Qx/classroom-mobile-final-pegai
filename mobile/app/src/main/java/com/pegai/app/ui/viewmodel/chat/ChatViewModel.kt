@@ -141,12 +141,23 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    fun definirDatas(start: String, end: String, total: Double) {
-        currentChatId?.let { id ->
-            viewModelScope.launch {
-                repository.updateContract(id, start, end, total)
-                repository.updateStatus(id, RentalStatus.DATES_PROPOSED.name)
-                enviarMensagem("Proposta de aluguel: De $start até $end. Valor total: R$ ${String.format("%.2f", total)}.")
+    // No ChatViewModel.kt, altere a função definirDatas
+    fun definirDatas(start: String, end: String) { // Removi o parâmetro total daqui
+        val chatId = currentChatId ?: return
+        val totalParaSalvar = _uiState.value.totalCalculado // Pega direto do estado do ViewModel
+
+        if (totalParaSalvar <= 0.0) {
+            android.util.Log.e("ChatViewModel", "Tentativa de salvar preço zerado!")
+            // Opcional: recalcular aqui se necessário
+        }
+
+        viewModelScope.launch {
+            try {
+                repository.updateContract(chatId, start, end, totalParaSalvar)
+                repository.updateStatus(chatId, RentalStatus.DATES_PROPOSED.name)
+                enviarMensagem("Proposta: $start até $end. Total: R$ ${String.format("%.2f", totalParaSalvar)}")
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Erro ao atualizar contrato", e)
             }
         }
     }
@@ -269,8 +280,9 @@ class ChatViewModel : ViewModel() {
     fun simularValoresAluguel(startMillis: Long?, endMillis: Long?, pricePerDay: Double) {
         if (startMillis != null && endMillis != null) {
             val diff = endMillis - startMillis
-            val dias = TimeUnit.MILLISECONDS.toDays(diff).coerceAtLeast(1).toInt()
+            val dias = (TimeUnit.MILLISECONDS.toDays(diff) + 1).coerceAtLeast(1).toInt()
             val total = dias * pricePerDay
+
             _uiState.update { it.copy(diasCalculados = dias, totalCalculado = total) }
         } else {
             _uiState.update { it.copy(diasCalculados = 0, totalCalculado = 0.0) }
