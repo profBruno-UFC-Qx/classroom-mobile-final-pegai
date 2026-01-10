@@ -137,7 +137,7 @@ fun OrdersScreen(
                             rental = rental,
                             currentUser = authUser,
                             onClick = {
-                                navController.navigate(Screen.ChatDetail.createRoute(rental.id))
+                                navController.navigate("chat_detail/${rental.id}")
                             }
                         )
                     }

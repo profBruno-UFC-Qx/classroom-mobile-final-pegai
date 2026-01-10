@@ -28,6 +28,7 @@ data class Rental(
     val productName: String = "",
     val productImageUrl: String = "",
     val productPrice: Double = 0.0,
+    val chatId: String = "",
     val locadorId: String = "",
     val locadorNome: String = "",
     val locadorFoto: String = "",

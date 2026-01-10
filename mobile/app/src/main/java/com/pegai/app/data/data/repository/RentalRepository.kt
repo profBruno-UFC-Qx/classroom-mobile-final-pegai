@@ -22,19 +22,26 @@ object RentalRepository {
                 .whereEqualTo("renterId", userId)
                 .get().await()
 
-            val ownerChats = ownerQuery.toObjects(ChatRoom::class.java)
-            val renterChats = renterQuery.toObjects(ChatRoom::class.java)
-
             val listaFinal = mutableListOf<Rental>()
 
-            ownerChats.forEach { chat ->
-                val nomeLocatario = UserRepository.getNomeUsuario(chat.renterId)
-                listaFinal.add(converterChatParaRental(chat, userId, "Você", nomeLocatario))
+            // Processando conversas onde sou dono
+            ownerQuery.documents.forEach { doc ->
+                val chat = doc.toObject(ChatRoom::class.java)
+                if (chat != null) {
+                    val chatComId = chat.copy(id = doc.id)
+                    val nomeLocatario = UserRepository.getNomeUsuario(chat.renterId)
+                    listaFinal.add(converterChatParaRental(chatComId, userId, "Você", nomeLocatario))
+                }
             }
 
-            renterChats.forEach { chat ->
-                val nomeDono = UserRepository.getNomeUsuario(chat.ownerId)
-                listaFinal.add(converterChatParaRental(chat, userId, nomeDono, "Você"))
+            // Processando conversas onde sou locatário
+            renterQuery.documents.forEach { doc ->
+                val chat = doc.toObject(ChatRoom::class.java)
+                if (chat != null) {
+                    val chatComId = chat.copy(id = doc.id)
+                    val nomeDono = UserRepository.getNomeUsuario(chat.ownerId)
+                    listaFinal.add(converterChatParaRental(chatComId, userId, nomeDono, "Você"))
+                }
             }
 
             listaFinal.sortedByDescending { it.dataCriacao }

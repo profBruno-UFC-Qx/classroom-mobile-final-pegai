@@ -235,7 +235,7 @@ fun LocationFilterModal(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Distância do raio", fontWeight = FontWeight.Medium)
-                    
+
                     Text(
                         "${radiusKm.toInt()} km",
                         style = MaterialTheme.typography.titleLarge,
