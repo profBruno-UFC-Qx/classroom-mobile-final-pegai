@@ -51,7 +51,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.pegai.app.model.User
 import com.pegai.app.ui.components.GuestPlaceholder
-import com.pegai.app.ui.theme.PegaíTheme
+import com.pegai.app.ui.theme.brandGradient
+import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 
 @Composable
@@ -557,27 +558,4 @@ private fun TopRightBlob(modifier: Modifier = Modifier) {
     }
 }
 
-/* =========================
-   PREVIEW
-   ========================= */
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun SettingsPreview() {
-    PegaíTheme {
-        SettingsContent(
-            user = User(
-                uid = "1",
-                nome = "Guilherme",
-                sobrenome = "B",
-                email = "guilhermebvda@alu.ufc.br",
-                telefone = "",
-                fotoUrl = "",
-                chavePix = ""
-            ),
-            onBack = {},
-            onGoMeusDados = {},
-            onLogout = {}
-        )
-    }
-}
