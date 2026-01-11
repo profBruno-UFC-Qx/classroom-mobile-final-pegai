@@ -26,15 +26,53 @@ class HomeViewModel : ViewModel() {
 
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private var todosProdutosCache: List<Product> = emptyList()
+    private var uidUsuarioLogado: String? = null
 
     val categoriasFiltro = listOf("Todos") + Category.entries.map { it.nomeExibicao }
 
     init {
-        carregarDadosIniciais()
+        carregarProdutos()
     }
+
 
     // --- FUNÇÕES DO MODAL DE MAPA ---
 
+    private fun carregarProdutos() {
+        _uiState.update { it.copy(isLoading = true) }
+
+        ProductRepository.sourceProdutos(
+            onChange = { produtos ->
+                viewModelScope.launch {
+                    val produtosComNome = produtos.map { produto ->
+                        val nomeFinal =
+                            if (produto.donoNome.isNotBlank()) produto.donoNome
+                            else UserRepository.getNomeUsuario(produto.donoId)
+
+                        produto.copy(donoNome = nomeFinal)
+                    }
+
+                    todosProdutosCache = produtosComNome
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            produtos = produtosComNome,
+                            produtosPopulares = produtosComNome.filter { p -> p.nota >= 4.5 }
+                        )
+                    }
+                }
+            },
+            onError = {
+                _uiState.update {
+                    it.copy(isLoading = false, erro = "Erro ao observar produtos")
+                }
+            }
+        )
+    }
+
+    fun definirUsuarioLogado(uid: String) {
+        uidUsuarioLogado = uid
+    }
     fun openMapModal() {
         _uiState.update { it.copy(isMapModalVisible = true) }
     }
@@ -47,52 +85,52 @@ class HomeViewModel : ViewModel() {
         _uiState.update { it.copy(radiusKm = radius) }
     }
 
-    // --------------------------------
+//    // --------------------------------
+//
+//    fun carregarDadosIniciais() {
+//        _uiState.update { it.copy(isLoading = true) }
+//
+//        viewModelScope.launch {
+//            try {
+//                val produtosReais = carregarProdutosCompletos()
+//
+//                todosProdutosCache = produtosReais
+//                ProductRepository.salvarNoCache(produtosReais)
+//
+//                _uiState.update {
+//                    it.copy(
+//                        isLoading = false,
+//                        produtos = produtosReais,
+//                        produtosPopulares = produtosReais.filter { p -> p.nota >= 4.5 }
+//                    )
+//                }
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//                _uiState.update {
+//                    it.copy(isLoading = false, erro = "Erro ao carregar produtos")
+//                }
+//            }
+//        }
+//    }
 
-    fun carregarDadosIniciais() {
-        _uiState.update { it.copy(isLoading = true) }
-
-        viewModelScope.launch {
-            try {
-                val produtosReais = carregarProdutosCompletos()
-
-                todosProdutosCache = produtosReais
-                ProductRepository.salvarNoCache(produtosReais)
-
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        produtos = produtosReais,
-                        produtosPopulares = produtosReais.filter { p -> p.nota >= 4.5 }
-                    )
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.update {
-                    it.copy(isLoading = false, erro = "Erro ao carregar produtos")
-                }
-            }
-        }
-    }
-
-    private suspend fun carregarProdutosCompletos(): List<Product> {
-        return try {
-            val snapshot = db.collection("products").get().await()
-
-            val lista = snapshot.documents.mapNotNull { doc ->
-                val produto = doc.toObject(Product::class.java)
-                produto?.copy(pid = doc.id)
-            }
-
-            lista.map { produto ->
-                val nomeFinal = if (produto.donoNome.isNotBlank()) produto.donoNome
-                else UserRepository.getNomeUsuario(produto.donoId)
-                produto.copy(donoNome = nomeFinal)
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
+//    private suspend fun carregarProdutosCompletos(): List<Product> {
+//        return try {
+//            val snapshot = db.collection("products").get().await()
+//
+//            val lista = snapshot.documents.mapNotNull { doc ->
+//                val produto = doc.toObject(Product::class.java)
+//                produto?.copy(pid = doc.id)
+//            }
+//
+//            lista.map { produto ->
+//                val nomeFinal = if (produto.donoNome.isNotBlank()) produto.donoNome
+//                else UserRepository.getNomeUsuario(produto.donoId)
+//                produto.copy(donoNome = nomeFinal)
+//            }
+//        } catch (e: Exception) {
+//            emptyList()
+//        }
+//    }
 
     fun selecionarCategoria(categoria: String) {
         _uiState.update { it.copy(categoriaSelecionada = categoria) }
@@ -135,6 +173,15 @@ class HomeViewModel : ViewModel() {
                             userLng = location.longitude
                         )
                     }
+                    uidUsuarioLogado?.let { uid ->
+                        viewModelScope.launch {
+                            UserRepository.atualizarLocalizacaoUsuario(
+                                userId = uid,
+                                latitude = location.latitude,
+                                longitude = location.longitude
+                            )
+                        }
+                    }
 
                     viewModelScope.launch {
                         converterCoordenadas(context, location.latitude, location.longitude)
@@ -167,4 +214,54 @@ class HomeViewModel : ViewModel() {
             }
         } catch (e: Exception) { }
     }
+
+    private fun distanciaKm(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) *
+                Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+
+        return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    }
+
+    fun filtroPorLocalizacao() {
+        val latUser = _uiState.value.userLat ?: return
+        val lngUser = _uiState.value.userLng ?: return
+        val raioKm = _uiState.value.radiusKm
+
+        viewModelScope.launch {
+            val filtrados = todosProdutosCache.filter { produto ->
+                val dono = UserRepository.getUsuarioPorId(produto.donoId)
+
+                dono?.latitude != null && dono.longitude != null &&
+                        distanciaKm(
+                            latUser,
+                            lngUser,
+                            dono.latitude,
+                            dono.longitude
+                        ) <= raioKm
+            }
+
+            _uiState.update {
+                it.copy(produtos = filtrados)
+            }
+        }
+    }
+
+    fun limparFiltroLocalizacao() {
+        _uiState.update {
+            it.copy(produtos = todosProdutosCache)
+        }
+    }
+
+
 }

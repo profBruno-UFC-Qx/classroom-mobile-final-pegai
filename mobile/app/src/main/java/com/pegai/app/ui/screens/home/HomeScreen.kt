@@ -87,6 +87,10 @@ fun HomeScreen(
         } else {
             launcherPermissao.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
+
+        if (usuarioLogado != null) {
+            viewModel.definirUsuarioLogado(usuarioLogado!!.uid)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -162,8 +166,14 @@ fun HomeScreen(
                 userLat = uiState.userLat ?: -23.55052,
                 userLng = uiState.userLng ?: -46.63330,
                 onRadiusChange = { viewModel.updateRadius(it) },
-                onDismiss = { viewModel.closeMapModal() },
-                onApply = { viewModel.closeMapModal() }
+                onDismiss = {
+                    viewModel.limparFiltroLocalizacao()
+                    viewModel.closeMapModal()
+                },
+                onApply = {
+                    viewModel.filtroPorLocalizacao()
+                    viewModel.closeMapModal()
+                }
             )
         }
     }

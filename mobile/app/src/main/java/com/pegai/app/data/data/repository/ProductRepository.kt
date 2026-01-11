@@ -112,4 +112,27 @@ object ProductRepository {
             throw Exception("Falha ao excluir: ${e.message}")
         }
     }
+
+    fun sourceProdutos(
+        onChange: (List<Product>) -> Unit,
+        onError: (Exception) -> Unit = {}
+    ) {
+        FirebaseFirestore.getInstance()
+            .collection("products")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot == null) return@addSnapshotListener
+
+                val produtos = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Product::class.java)?.copy(pid = doc.id)
+                }
+
+                onChange(produtos)
+            }
+    }
+
 }
