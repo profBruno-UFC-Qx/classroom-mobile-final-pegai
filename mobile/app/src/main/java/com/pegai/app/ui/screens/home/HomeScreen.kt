@@ -81,17 +81,31 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
-        val temPermissao = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val temPermissao =
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
         if (temPermissao) {
             viewModel.obterLocalizacaoAtual(context)
         } else {
-            launcherPermissao.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        }
-
-        if (usuarioLogado != null) {
-            viewModel.definirUsuarioLogado(usuarioLogado!!.uid)
+            launcherPermissao.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
+
+    LaunchedEffect(usuarioLogado?.uid) {
+        usuarioLogado?.uid?.let { uid ->
+            viewModel.definirUsuarioLogado(uid)
+        }
+    }
+
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -437,6 +451,15 @@ fun HomeHeader(
                     Icon(Icons.Default.FavoriteBorder, null, tint = headerButtonContent)
                 }
             } else {
+                IconButton(
+                    onClick = onMapClick,
+                    modifier = Modifier
+                        .size(45.dp)
+                        .background(headerButtonBg, CircleShape) // Cor dinâmica do Surface
+                ) {
+                    Icon(Icons.Default.Map, null, tint = headerButtonContent) // Cor dinâmica Primary
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = onLoginClick,
                     shape = RoundedCornerShape(50),

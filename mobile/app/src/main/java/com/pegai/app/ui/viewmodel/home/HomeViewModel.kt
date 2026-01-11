@@ -3,6 +3,7 @@ package com.pegai.app.ui.viewmodel.home
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationServices
@@ -72,7 +73,9 @@ class HomeViewModel : ViewModel() {
 
     fun definirUsuarioLogado(uid: String) {
         uidUsuarioLogado = uid
+        localizacaoExistente()
     }
+
     fun openMapModal() {
         _uiState.update { it.copy(isMapModalVisible = true) }
     }
@@ -148,7 +151,8 @@ class HomeViewModel : ViewModel() {
         val cat = estadoAtual.categoriaSelecionada
 
         val listaFiltrada = todosProdutosCache.filter { produto ->
-            val matchCategoria = if (cat == "Todos") true else produto.categoria.equals(cat, ignoreCase = true)
+            val matchCategoria =
+                if (cat == "Todos") true else produto.categoria.equals(cat, ignoreCase = true)
             val matchTexto = produto.titulo.lowercase().contains(termo) ||
                     produto.descricao.lowercase().contains(termo)
 
@@ -173,15 +177,7 @@ class HomeViewModel : ViewModel() {
                             userLng = location.longitude
                         )
                     }
-                    uidUsuarioLogado?.let { uid ->
-                        viewModelScope.launch {
-                            UserRepository.atualizarLocalizacaoUsuario(
-                                userId = uid,
-                                latitude = location.latitude,
-                                longitude = location.longitude
-                            )
-                        }
-                    }
+                    localizacaoExistente()
 
                     viewModelScope.launch {
                         converterCoordenadas(context, location.latitude, location.longitude)
@@ -200,6 +196,7 @@ class HomeViewModel : ViewModel() {
     private fun converterCoordenadas(context: Context, lat: Double, long: Double) {
         try {
             val geocoder = Geocoder(context, Locale.getDefault())
+
             @Suppress("DEPRECATION")
             val addresses = geocoder.getFromLocation(lat, long, 1)
 
@@ -212,7 +209,8 @@ class HomeViewModel : ViewModel() {
 
                 _uiState.update { it.copy(localizacaoAtual = texto) }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+        }
     }
 
     private fun distanciaKm(
@@ -263,5 +261,17 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-
+    fun localizacaoExistente() {
+        val uid = uidUsuarioLogado ?: return
+        val lat = _uiState.value.userLat ?: return
+        val lng = _uiState.value.userLng ?: return
+        Log.d("LOC_DEBUG", "uid=$uid lat=$lat lng=$lng")
+        viewModelScope.launch {
+            UserRepository.atualizarLocalizacaoUsuario(
+                userId = uid,
+                latitude = lat,
+                longitude = lng
+            )
+        }
+    }
 }
