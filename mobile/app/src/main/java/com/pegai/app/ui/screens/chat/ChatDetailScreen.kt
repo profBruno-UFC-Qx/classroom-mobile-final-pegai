@@ -57,7 +57,9 @@ fun ChatDetailScreen(
     val currentUser by authViewModel.usuarioLogado.collectAsState()
     val context = LocalContext.current
 
-    // --- CONFIGURAÇÃO DE SONS ---
+    // adicionar sons de notificação quando chat está visivel(se o usuario estiver
+    // dentro do chat/conversa e receber msg nesse chat ativo, ele recebera uma notificação
+    // sonora)
     val sfxSend = remember { MediaPlayer.create(context, R.raw.send_message) }
     val sfxReceive = remember { MediaPlayer.create(context, R.raw.receive_message) }
 
@@ -107,7 +109,7 @@ fun ChatDetailScreen(
     Box(modifier = Modifier.fillMaxSize().background(currentBrandGradient)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // --- Header ---
+
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Spacer(modifier = Modifier.height(12.dp))
@@ -156,7 +158,7 @@ fun ChatDetailScreen(
                 }
             }
 
-            // --- Chat Content ---
+
             Scaffold(
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.background,

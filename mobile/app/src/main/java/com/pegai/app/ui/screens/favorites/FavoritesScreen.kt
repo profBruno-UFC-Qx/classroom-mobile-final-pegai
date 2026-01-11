@@ -8,8 +8,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 /**
- * Tela responsável por listar os itens favoritados pelo usuário.
- * Estado atual: Em construção (Placeholder).
+  Tela responsável por listar os itens favoritados pelo usuário.
+  Estado atual: Em construção (Placeholder).
  */
 @Composable
 fun FavoritesScreen() {

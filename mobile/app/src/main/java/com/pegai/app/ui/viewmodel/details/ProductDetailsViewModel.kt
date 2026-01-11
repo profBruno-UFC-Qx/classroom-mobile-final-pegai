@@ -59,7 +59,7 @@ class ProductDetailsViewModel : ViewModel() {
                             isLoading = false,
                             produto = produto,
                             nomeDono = nomeDono,
-                            fotoDono = fotoDono, // <--- Salvando a foto no estado
+                            fotoDono = fotoDono,
                             avaliacoesCount = reviewsReais.size,
                             imagensCarrossel = listaImagens,
                             reviews = reviewsReais
