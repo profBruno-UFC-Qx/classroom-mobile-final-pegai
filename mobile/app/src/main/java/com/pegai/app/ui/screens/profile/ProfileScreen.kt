@@ -46,6 +46,8 @@ import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.profile.ProfileViewModel
+import com.pegai.app.ui.navigation.Screen
+
 
 @Composable
 fun ProfileScreen(
@@ -291,10 +293,22 @@ fun ProfileScreen(
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-40).dp)
                 ) {
-                    ProfileMenuItem(Icons.Default.Person, "Meus Dados Pessoais", { })
-                    ProfileMenuItem(Icons.Default.History, "Histórico de Empréstimos", { })
-                    ProfileMenuItem(Icons.Default.Settings, "Configurações", { })
-                    ProfileMenuItem(Icons.Default.Info, "Ajuda e Suporte", { })
+                    ProfileMenuItem(Icons.Default.Person, "Meus Dados Pessoais") {
+                        navController.navigate(Screen.MeusDados.route)
+                    }
+
+                    ProfileMenuItem(Icons.Default.Favorite, "Favoritos") {
+                        navController.navigate(Screen.Favorites.route)
+                    }
+
+                    ProfileMenuItem(Icons.Default.Settings, "Configurações") {
+                        navController.navigate(Screen.Settings.route)
+                    }
+
+                    ProfileMenuItem(Icons.Default.Info, "Ajuda e Suporte") {
+                        navController.navigate(Screen.Support.route)
+                    }
+
                     Spacer(modifier = Modifier.height(100.dp))
                 }
             }

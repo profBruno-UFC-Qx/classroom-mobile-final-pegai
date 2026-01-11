@@ -8,7 +8,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -46,7 +45,6 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
@@ -59,16 +57,19 @@ import com.pegai.app.ui.theme.brandGradient
 import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.home.HomeViewModel
+import com.pegai.app.ui.viewmodel.favorites.FavoritesViewModel
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    favoritesViewModel: FavoritesViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val usuarioLogado by authViewModel.usuarioLogado.collectAsState()
     val context = LocalContext.current
+    val favState by favoritesViewModel.uiState.collectAsState()
 
     val dynamicGradient = brandGradient()
 
@@ -151,7 +152,20 @@ fun HomeScreen(
                 }
 
                 items(uiState.produtos) { produto ->
-                    ProductCard(product = produto, onClick = { navController.navigate("product_details/${produto.pid}") })
+                    val isFav = favState.favoriteIds.contains(produto.pid)
+
+                    ProductCard(
+                        product = produto,
+                        isFavorite = isFav,
+                        onClick = { navController.navigate("product_details/${produto.pid}") },
+                        onToggleFavorite = {
+                            if (usuarioLogado == null) {
+                                navController.navigate("login")
+                            } else {
+                                favoritesViewModel.toggleFavorite(produto)
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -444,7 +458,12 @@ fun HomeHeader(
 }
 
 @Composable
-fun ProductCard(product: Product, onClick: () -> Unit) {
+fun ProductCard(
+    product: Product,
+    onClick: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
+) {
     val dynamicGradient = brandGradient()
 
     Card(
@@ -457,10 +476,14 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
             Box(modifier = Modifier.fillMaxWidth().height(170.dp)) {
                 AsyncImage(model = product.imageUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
 
-                Surface(modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), shadowElevation = 2.dp) {
+                Surface(onClick = onToggleFavorite, modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), shadowElevation = 2.dp) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.FavoriteBorder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                    }
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = "Favoritar",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )                    }
                 }
 
                 Box(

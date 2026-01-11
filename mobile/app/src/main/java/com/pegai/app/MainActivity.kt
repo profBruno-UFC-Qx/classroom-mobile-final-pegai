@@ -40,10 +40,18 @@ import com.pegai.app.ui.screens.profile.PublicProfileScreen
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.pegai.app.ui.screens.mydata.MeusDadosScreen
+import com.pegai.app.ui.screens.settings.SettingsScreen
+import com.pegai.app.ui.screens.support.SupportScreen
+import androidx.compose.runtime.LaunchedEffect
+import com.pegai.app.ui.viewmodel.favorites.FavoritesViewModel
+
 
 class MainActivity : ComponentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
+    private val favoritesViewModel: FavoritesViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -69,6 +77,13 @@ class MainActivity : ComponentActivity() {
             )
             val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
 
+            val usuarioLogado by authViewModel.usuarioLogado.collectAsState()
+
+            LaunchedEffect(usuarioLogado?.uid) {
+                favoritesViewModel.setUserId(usuarioLogado?.uid)
+            }
+
+
             PegaiTheme(darkTheme = isDarkTheme) {
 
                 val navController = rememberNavController()
@@ -77,6 +92,10 @@ class MainActivity : ComponentActivity() {
 
                 val showBottomBar = currentRoute != "login" &&
                         currentRoute != "register" &&
+                        currentRoute != "favorites" &&
+                        currentRoute != "meus_dados" &&
+                        currentRoute != "settings" &&
+                        currentRoute != "support" &&
                         currentRoute?.startsWith("chat_detail") != true &&
                         currentRoute?.startsWith("public_profile") != true &&
                         currentRoute?.startsWith("product_details") != true
@@ -99,7 +118,10 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
                     ) {
                         composable("home") {
-                            HomeScreen(navController = navController, authViewModel = authViewModel)
+                            HomeScreen(
+                                navController = navController,
+                                authViewModel = authViewModel,
+                                favoritesViewModel = favoritesViewModel)
                         }
 
                         composable("login") {
@@ -118,8 +140,6 @@ class MainActivity : ComponentActivity() {
                             AddScreen(navController = navController, authViewModel = authViewModel)
                         }
 
-                        composable("favorites") { FavoritesScreen() }
-
                         composable("profile") {
                             ProfileScreen(
                                 navController = navController,
@@ -127,6 +147,36 @@ class MainActivity : ComponentActivity() {
                                 themeViewModel = themeViewModel
                             )
                         }
+
+                        composable("favorites") {
+                            FavoritesScreen(
+                                navController = navController,
+                                authViewModel = authViewModel,
+                                favoritesViewModel = favoritesViewModel
+                            )
+                        }
+
+                        composable("meus_dados") {
+                            MeusDadosScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+
+                        composable("settings") {
+                            SettingsScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+
+                        composable("support") {
+                            SupportScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+
 
                         composable("chat") {
                             ChatListScreen(navController = navController, authViewModel = authViewModel)
@@ -137,7 +187,12 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("productId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId")
-                            ProductDetailsScreen(navController = navController, productId = productId, authViewModel = authViewModel)
+                            ProductDetailsScreen(
+                                navController = navController,
+                                productId = productId,
+                                authViewModel = authViewModel,
+                                favoritesViewModel = favoritesViewModel
+                            )
                         }
 
                         composable(

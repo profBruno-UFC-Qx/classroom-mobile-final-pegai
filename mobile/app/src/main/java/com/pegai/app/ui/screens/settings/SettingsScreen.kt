@@ -13,7 +13,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -24,10 +23,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -44,16 +41,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.pegai.app.model.User
 import com.pegai.app.ui.components.GuestPlaceholder
-import com.pegai.app.ui.theme.brandGradient
-import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
+import com.pegai.app.ui.navigation.Screen
+
 
 @Composable
 fun SettingsScreen(
@@ -75,7 +70,7 @@ fun SettingsScreen(
     SettingsContent(
         user = user!!,
         onBack = { navController.popBackStack() },
-        onGoMeusDados = { navController.navigate("meus_dados") },
+        onGoMeusDados = { navController.navigate(Screen.MeusDados.route) },
         onLogout = {
             authViewModel.logout()
             navController.popBackStack() // volta pro perfil e vira "Visitante"

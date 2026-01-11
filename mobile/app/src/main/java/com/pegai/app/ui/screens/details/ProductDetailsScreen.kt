@@ -37,14 +37,20 @@ import com.pegai.app.ui.theme.getFieldColor
 import com.pegai.app.ui.viewmodel.AuthViewModel
 import com.pegai.app.ui.viewmodel.details.ProductDetailsViewModel
 import com.pegai.app.ui.viewmodel.details.ReviewUI
+import com.pegai.app.ui.viewmodel.favorites.FavoritesViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+
 
 @Composable
 fun ProductDetailsScreen(
     navController: NavController,
     productId: String?,
     authViewModel: AuthViewModel,
-    viewModel: ProductDetailsViewModel = viewModel()
+    viewModel: ProductDetailsViewModel = viewModel(),
+    favoritesViewModel: FavoritesViewModel
 ) {
     val user by authViewModel.usuarioLogado.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -73,6 +79,12 @@ fun ProductDetailsScreen(
     val product = uiState.produto ?: return
     val imagens = uiState.imagensCarrossel
     val reviewsList = uiState.reviews
+    val u by authViewModel.usuarioLogado.collectAsState()
+    val fav by favoritesViewModel.uiState.collectAsState()
+    val p = uiState.produto!!               // assume que aqui já carregou
+    val pid = p.pid.ifBlank { productId.orEmpty() }
+    val isFav = pid in fav.favoriteIds
+
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
@@ -187,7 +199,7 @@ fun ProductDetailsScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Surface(onClick = { }, modifier = Modifier.size(48.dp), shape = CircleShape, color = Color.White, shadowElevation = 8.dp) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.FavoriteBorder, null, tint = Color(0xFF0E8FC6)) }
+                            Box(contentAlignment = Alignment.Center) { IconButton(onClick = { if (u == null) navController.navigate("login") else favoritesViewModel.toggleFavorite(p.copy(pid = pid)) }) { Icon(imageVector = if (isFav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, contentDescription = null, tint = Color(0xFF0E8FC6)) } }
                         }
                     }
                 }
