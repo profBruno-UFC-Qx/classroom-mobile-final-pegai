@@ -34,6 +34,12 @@ import com.pegai.app.ui.components.GuestPlaceholder
 import com.pegai.app.ui.theme.PegaiTheme
 import com.pegai.app.ui.viewmodel.AuthViewModel
 
+
+/**
+  Tela responsável por listar os itens favoritados pelo usuário.
+  Estado atual: Em construção (Placeholder).
+ */
+
 @Composable
 fun FavoritesScreen(
     navController: NavController,

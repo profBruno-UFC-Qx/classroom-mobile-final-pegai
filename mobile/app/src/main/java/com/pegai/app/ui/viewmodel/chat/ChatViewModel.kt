@@ -141,14 +141,12 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    // No ChatViewModel.kt, altere a função definirDatas
-    fun definirDatas(start: String, end: String) { // Removi o parâmetro total daqui
+    fun definirDatas(start: String, end: String) {
         val chatId = currentChatId ?: return
         val totalParaSalvar = _uiState.value.totalCalculado // Pega direto do estado do ViewModel
 
         if (totalParaSalvar <= 0.0) {
             android.util.Log.e("ChatViewModel", "Tentativa de salvar preço zerado!")
-            // Opcional: recalcular aqui se necessário
         }
 
         viewModelScope.launch {

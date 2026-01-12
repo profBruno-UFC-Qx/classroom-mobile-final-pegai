@@ -35,7 +35,9 @@ fun RentalDatePickerSheet(
     val datePickerState = rememberDateRangePickerState(
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                // Bloqueia datas anteriores a hoje (UTC)
+                // Bloqueia datas anteriores a hoje, para não entrar em conflito com a
+                // regra de negocios uma vez que não tem como vc alugar itens
+                // em datas que ja passaram
                 val calendar = java.util.Calendar.getInstance(TimeZone.getTimeZone("UTC"))
                 calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
                 calendar.set(java.util.Calendar.MINUTE, 0)

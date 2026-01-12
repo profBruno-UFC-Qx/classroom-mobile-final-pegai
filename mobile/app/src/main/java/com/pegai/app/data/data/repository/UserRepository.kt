@@ -92,4 +92,27 @@ object UserRepository {
             e.printStackTrace()
         }
     }
+
+    suspend fun atualizarLocalizacaoUsuario(
+        userId: String,
+        latitude: Double,
+        longitude: Double
+    ) {
+        try {
+            val data = mapOf(
+                "latitude" to latitude,
+                "longitude" to longitude
+            )
+
+            db.collection("users")
+                .document(userId)
+                .set(data, SetOptions.merge())
+                .await()
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
 }

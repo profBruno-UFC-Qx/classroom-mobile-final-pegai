@@ -109,7 +109,6 @@ fun AddProductContent(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // --- Header Premium Adaptado ---
             Column(modifier = Modifier.fillMaxWidth().background(dynamicGradient)) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
@@ -238,7 +237,6 @@ fun CamposDoFormulario(viewModel: AddProductViewModel, uiState: AddProductUiStat
 
     val currentFieldColor = getFieldColor()
 
-    // Seletor de Fotos Adaptado
     Box(
         modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(20.dp)).background(currentFieldColor).border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(20.dp)).clickable {
             photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))

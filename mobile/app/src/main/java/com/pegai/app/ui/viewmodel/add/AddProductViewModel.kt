@@ -20,6 +20,10 @@ import java.util.UUID
 
 class AddProductViewModel : ViewModel() {
 
+    // ----------------------------------------------------------------
+    // STATE
+    // ----------------------------------------------------------------
+
     private val _uiState = MutableStateFlow(AddProductUiState())
     val uiState: StateFlow<AddProductUiState> = _uiState.asStateFlow()
 
@@ -28,23 +32,51 @@ class AddProductViewModel : ViewModel() {
 
     val categoriasDisponiveis = Category.entries
 
+    // ----------------------------------------------------------------
+    // LOAD
+    // ----------------------------------------------------------------
+
     fun carregarMeusProdutos(userId: String) {
         _uiState.update { it.copy(isLoading = true) }
+
         viewModelScope.launch {
             try {
                 val lista = ProductRepository.getProdutosPorDono(userId)
-                _uiState.update { it.copy(meusProdutos = lista, isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        meusProdutos = lista,
+                        isLoading = false
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
-    // --- Form Inputs ---
-    fun onTituloChange(v: String) { _uiState.update { it.copy(titulo = v) } }
-    fun onDescricaoChange(v: String) { _uiState.update { it.copy(descricao = v) } }
-    fun onPrecoChange(v: String) { _uiState.update { it.copy(preco = v) } }
-    fun onCategoriaChange(v: String) { _uiState.update { it.copy(categoria = v) } }
+    // ----------------------------------------------------------------
+    // FORM INPUTS
+    // ----------------------------------------------------------------
+
+    fun onTituloChange(v: String) {
+        _uiState.update { it.copy(titulo = v) }
+    }
+
+    fun onDescricaoChange(v: String) {
+        _uiState.update { it.copy(descricao = v) }
+    }
+
+    fun onPrecoChange(v: String) {
+        _uiState.update { it.copy(preco = v) }
+    }
+
+    fun onCategoriaChange(v: String) {
+        _uiState.update { it.copy(categoria = v) }
+    }
+
+    // ----------------------------------------------------------------
+    // IMAGENS
+    // ----------------------------------------------------------------
 
     fun onFotosSelecionadas(uris: List<Uri>) {
         val caminhosString = uris.map { uri ->
@@ -55,17 +87,27 @@ class AddProductViewModel : ViewModel() {
 
         val listaAtual = _uiState.value.imagensSelecionadas.toMutableList()
         listaAtual.addAll(caminhosString)
-        _uiState.update { it.copy(imagensSelecionadas = listaAtual.take(5)) }
+
+        _uiState.update {
+            it.copy(imagensSelecionadas = listaAtual.take(5))
+        }
     }
 
     fun removerFoto(caminho: String) {
         val novaLista = _uiState.value.imagensSelecionadas.toMutableList()
         novaLista.remove(caminho)
+
         uriCache.remove(caminho)
-        _uiState.update { it.copy(imagensSelecionadas = novaLista) }
+
+        _uiState.update {
+            it.copy(imagensSelecionadas = novaLista)
+        }
     }
 
-    // --- Modal Control ---
+    // ----------------------------------------------------------------
+    // MODAIS
+    // ----------------------------------------------------------------
+
     fun abrirModalEdicao(produto: Product) {
         _uiState.update {
             it.copy(
@@ -75,7 +117,9 @@ class AddProductViewModel : ViewModel() {
                 descricao = produto.descricao,
                 preco = produto.preco.toString(),
                 categoria = produto.categoria,
-                imagensSelecionadas = produto.imagens.ifEmpty { listOf(produto.imageUrl) },
+                imagensSelecionadas = produto.imagens.ifEmpty {
+                    listOf(produto.imageUrl)
+                },
                 erro = null
             )
         }
@@ -83,12 +127,25 @@ class AddProductViewModel : ViewModel() {
 
     fun fecharModal() {
         limparFormulario()
-        _uiState.update { it.copy(mostrarModalEdicao = false, mostrarDialogoExclusao = false) }
+        _uiState.update {
+            it.copy(
+                mostrarModalEdicao = false,
+                mostrarDialogoExclusao = false
+            )
+        }
     }
 
-    // --- Product Actions ---
-    fun solicitarExclusao() { _uiState.update { it.copy(mostrarDialogoExclusao = true) } }
-    fun cancelarExclusao() { _uiState.update { it.copy(mostrarDialogoExclusao = false) } }
+    // ----------------------------------------------------------------
+    // EXCLUSÃO
+    // ----------------------------------------------------------------
+
+    fun solicitarExclusao() {
+        _uiState.update { it.copy(mostrarDialogoExclusao = true) }
+    }
+
+    fun cancelarExclusao() {
+        _uiState.update { it.copy(mostrarDialogoExclusao = false) }
+    }
 
     fun confirmarExclusao() {
         val idParaDeletar = _uiState.value.idEmEdicao ?: return
@@ -101,10 +158,16 @@ class AddProductViewModel : ViewModel() {
                 fecharModal()
                 carregarMeusProdutos(userId)
             } catch (e: Throwable) {
-                _uiState.update { it.copy(erro = "Erro ao excluir: ${e.message}") }
+                _uiState.update {
+                    it.copy(erro = "Erro ao excluir: ${e.message}")
+                }
             }
         }
     }
+
+    // ----------------------------------------------------------------
+    // SALVAR PRODUTO
+    // ----------------------------------------------------------------
 
     fun salvarProduto() {
         val state = _uiState.value
@@ -115,13 +178,21 @@ class AddProductViewModel : ViewModel() {
             return
         }
 
-        if (state.titulo.isBlank() || state.preco.isBlank() || state.categoria.isBlank()) {
-            _uiState.update { it.copy(erro = "Preencha os campos obrigatórios.") }
+        if (
+            state.titulo.isBlank() ||
+            state.preco.isBlank() ||
+            state.categoria.isBlank()
+        ) {
+            _uiState.update {
+                it.copy(erro = "Preencha os campos obrigatórios.")
+            }
             return
         }
 
         if (state.imagensSelecionadas.isEmpty()) {
-            _uiState.update { it.copy(erro = "Adicione ao menos uma foto.") }
+            _uiState.update {
+                it.copy(erro = "Adicione ao menos uma foto.")
+            }
             return
         }
 
@@ -135,7 +206,10 @@ class AddProductViewModel : ViewModel() {
                             if (caminhoString.startsWith("http")) {
                                 caminhoString
                             } else {
-                                val uriOriginal = uriCache[caminhoString] ?: Uri.parse(caminhoString)
+                                val uriOriginal =
+                                    uriCache[caminhoString]
+                                        ?: Uri.parse(caminhoString)
+
                                 ProductRepository.uploadImagemProduto(uriOriginal)
                             }
                         } catch (e: Throwable) {
@@ -148,10 +222,18 @@ class AddProductViewModel : ViewModel() {
                 val imagensResultados = imagensDeffered.awaitAll()
                 val imagensFinais = imagensResultados.filter { it.isNotEmpty() }
 
-                if (imagensFinais.isEmpty()) throw Exception("Falha no upload das fotos.")
+                if (imagensFinais.isEmpty()) {
+                    throw Exception("Falha no upload das fotos.")
+                }
 
-                val nomeDono = try { UserRepository.getNomeUsuario(user.uid) } catch (e:Exception) { "Anunciante" }
-                val precoTratado = state.preco.replace(",", ".").toDoubleOrNull() ?: 0.0
+                val nomeDono = try {
+                    UserRepository.getNomeUsuario(user.uid)
+                } catch (e: Exception) {
+                    "Anunciante"
+                }
+
+                val precoTratado =
+                    state.preco.replace(",", ".").toDoubleOrNull() ?: 0.0
 
                 val produtoFinal = Product(
                     pid = state.idEmEdicao ?: UUID.randomUUID().toString(),
@@ -170,32 +252,57 @@ class AddProductViewModel : ViewModel() {
                 ProductRepository.salvarProduto(produtoFinal)
 
                 _uiState.update {
-                    it.copy(isLoading = false, mensagemSucesso = "Produto salvo com sucesso!")
+                    it.copy(
+                        isLoading = false,
+                        mensagemSucesso = "Produto salvo com sucesso!"
+                    )
                 }
 
-                if (state.idEmEdicao == null) limparFormulario() else fecharModal()
+                if (state.idEmEdicao == null) {
+                    limparFormulario()
+                } else {
+                    fecharModal()
+                }
+
                 carregarMeusProdutos(user.uid)
 
             } catch (e: Throwable) {
                 _uiState.update {
-                    it.copy(isLoading = false, erro = "Erro ao salvar: ${e.message}")
+                    it.copy(
+                        isLoading = false,
+                        erro = "Erro ao salvar: ${e.message}"
+                    )
                 }
             }
         }
     }
 
+    // ----------------------------------------------------------------
+    // LIMPEZA
+    // ----------------------------------------------------------------
+
     fun limparFormulario() {
         uriCache.clear()
         _uiState.update {
             it.copy(
-                idEmEdicao = null, titulo = "", descricao = "", preco = "",
-                categoria = "", imagensSelecionadas = emptyList(),
-                erro = null, mostrarModalEdicao = false
+                idEmEdicao = null,
+                titulo = "",
+                descricao = "",
+                preco = "",
+                categoria = "",
+                imagensSelecionadas = emptyList(),
+                erro = null,
+                mostrarModalEdicao = false
             )
         }
     }
 
     fun limparMensagens() {
-        _uiState.update { it.copy(mensagemSucesso = null, erro = null) }
+        _uiState.update {
+            it.copy(
+                mensagemSucesso = null,
+                erro = null
+            )
+        }
     }
 }

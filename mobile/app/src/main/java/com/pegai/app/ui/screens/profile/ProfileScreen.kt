@@ -122,7 +122,7 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Pix (Botão Esquerda)
+                            // Pix
                             Column(
                                 modifier = Modifier.weight(1f).clickable {
                                     tempChavePix = uiState.chavePix
@@ -202,7 +202,7 @@ fun ProfileScreen(
                                 }
                             }
 
-                            // Logout (Botão Direita)
+                            // Logout
                             Column(
                                 modifier = Modifier.weight(1f).clickable { authViewModel.logout() },
                                 horizontalAlignment = Alignment.CenterHorizontally

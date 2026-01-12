@@ -16,5 +16,8 @@ data class User(
     val totalAvaliacoesLocador: Int = 0,
 
     val notaLocatario: Double = 0.0,
-    val totalAvaliacoesLocatario: Int = 0
+    val totalAvaliacoesLocatario: Int = 0,
+
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

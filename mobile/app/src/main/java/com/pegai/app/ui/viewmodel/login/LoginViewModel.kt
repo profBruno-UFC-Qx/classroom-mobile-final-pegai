@@ -12,17 +12,15 @@ import kotlinx.coroutines.launch
 
 class LoginViewModel : ViewModel() {
 
-    // Estado Privado (Só o ViewModel pode alterar)
     private val _uiState = MutableStateFlow(LoginUiState())
 
-    // Estado Público (A Tela só pode ler ou observar)
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     fun login(email: String, password: String) {
-        // Avisa a tela que está carregando
+
         _uiState.value = _uiState.value.copy(isLoading = true, erro = null)
 
         auth.signInWithEmailAndPassword(email, password)
@@ -42,7 +40,7 @@ class LoginViewModel : ViewModel() {
                     "badly formatted" in e.message.toString().lowercase() -> "E-mail inválido."
                     else -> "Erro: ${e.message}"
                 }
-                // (Falha): Avisa a tela do erro e para o loading
+
                 _uiState.value = LoginUiState(isLoading = false, erro = msg)
             }
     }
@@ -64,7 +62,6 @@ class LoginViewModel : ViewModel() {
             }
     }
 
-    // Função auxiliar para resetar o estado caso o usuário volte para a tela de login
     fun resetState() {
         _uiState.value = LoginUiState()
     }

@@ -3,6 +3,7 @@ package com.pegai.app.ui.viewmodel.home
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationServices
@@ -16,83 +17,84 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
 class HomeViewModel : ViewModel() {
+
+    // ----------------------------------------------------------------
+    // STATE
+    // ----------------------------------------------------------------
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private var todosProdutosCache: List<Product> = emptyList()
+    private var uidUsuarioLogado: String? = null
 
-    val categoriasFiltro = listOf("Todos") + Category.entries.map { it.nomeExibicao }
+    val categoriasFiltro =
+        listOf("Todos") + Category.entries.map { it.nomeExibicao }
+
+    // ----------------------------------------------------------------
+    // INIT
+    // ----------------------------------------------------------------
 
     init {
-        carregarDadosIniciais()
+        carregarProdutos()
     }
 
-    // --- FUNÇÕES DO MODAL DE MAPA ---
+    // ----------------------------------------------------------------
+    // PRODUTOS
+    // ----------------------------------------------------------------
 
-    fun openMapModal() {
-        _uiState.update { it.copy(isMapModalVisible = true) }
-    }
-
-    fun closeMapModal() {
-        _uiState.update { it.copy(isMapModalVisible = false) }
-    }
-
-    fun updateRadius(radius: Float) {
-        _uiState.update { it.copy(radiusKm = radius) }
-    }
-
-    // --------------------------------
-
-    fun carregarDadosIniciais() {
+    private fun carregarProdutos() {
         _uiState.update { it.copy(isLoading = true) }
 
-        viewModelScope.launch {
-            try {
-                val produtosReais = carregarProdutosCompletos()
+        ProductRepository.sourceProdutos(
+            onChange = { produtos ->
+                viewModelScope.launch {
+                    val produtosComNome = produtos.map { produto ->
+                        val nomeFinal =
+                            if (produto.donoNome.isNotBlank()) produto.donoNome
+                            else UserRepository.getNomeUsuario(produto.donoId)
 
-                todosProdutosCache = produtosReais
-                ProductRepository.salvarNoCache(produtosReais)
+                        produto.copy(donoNome = nomeFinal)
+                    }
 
+                    todosProdutosCache = produtosComNome
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            produtos = produtosComNome,
+                            produtosPopulares = produtosComNome.filter { it.nota >= 4.5 }
+                        )
+                    }
+                }
+            },
+            onError = {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        produtos = produtosReais,
-                        produtosPopulares = produtosReais.filter { p -> p.nota >= 4.5 }
+                        erro = "Erro ao observar produtos"
                     )
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.update {
-                    it.copy(isLoading = false, erro = "Erro ao carregar produtos")
-                }
             }
-        }
+        )
     }
 
-    private suspend fun carregarProdutosCompletos(): List<Product> {
-        return try {
-            val snapshot = db.collection("products").get().await()
+    // ----------------------------------------------------------------
+    // USUÁRIO LOGADO
+    // ----------------------------------------------------------------
 
-            val lista = snapshot.documents.mapNotNull { doc ->
-                val produto = doc.toObject(Product::class.java)
-                produto?.copy(pid = doc.id)
-            }
-
-            lista.map { produto ->
-                val nomeFinal = if (produto.donoNome.isNotBlank()) produto.donoNome
-                else UserRepository.getNomeUsuario(produto.donoId)
-                produto.copy(donoNome = nomeFinal)
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
+    fun definirUsuarioLogado(uid: String) {
+        uidUsuarioLogado = uid
+        localizacaoExistente()
     }
+
+    // ----------------------------------------------------------------
+    // FILTROS (CATEGORIA / TEXTO)
+    // ----------------------------------------------------------------
 
     fun selecionarCategoria(categoria: String) {
         _uiState.update { it.copy(categoriaSelecionada = categoria) }
@@ -110,9 +112,13 @@ class HomeViewModel : ViewModel() {
         val cat = estadoAtual.categoriaSelecionada
 
         val listaFiltrada = todosProdutosCache.filter { produto ->
-            val matchCategoria = if (cat == "Todos") true else produto.categoria.equals(cat, ignoreCase = true)
-            val matchTexto = produto.titulo.lowercase().contains(termo) ||
-                    produto.descricao.lowercase().contains(termo)
+            val matchCategoria =
+                if (cat == "Todos") true
+                else produto.categoria.equals(cat, ignoreCase = true)
+
+            val matchTexto =
+                produto.titulo.lowercase().contains(termo) ||
+                        produto.descricao.lowercase().contains(termo)
 
             matchCategoria && matchTexto
         }
@@ -120,51 +126,175 @@ class HomeViewModel : ViewModel() {
         _uiState.update { it.copy(produtos = listaFiltrada) }
     }
 
+    // ----------------------------------------------------------------
+    // MODAL DE MAPA
+    // ----------------------------------------------------------------
+
+    fun openMapModal() {
+        _uiState.update { it.copy(isMapModalVisible = true) }
+    }
+
+    fun closeMapModal() {
+        _uiState.update { it.copy(isMapModalVisible = false) }
+    }
+
+    fun updateRadius(radius: Float) {
+        _uiState.update { it.copy(radiusKm = radius) }
+    }
+
+    // ----------------------------------------------------------------
+    // LOCALIZAÇÃO
+    // ----------------------------------------------------------------
+
     @SuppressLint("MissingPermission")
     fun obterLocalizacaoAtual(context: Context) {
         _uiState.update { it.copy(localizacaoAtual = "Buscando...") }
 
         try {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    // --- ATUALIZAÇÃO: SALVAR LAT/LNG NO ESTADO ---
-                    _uiState.update {
-                        it.copy(
-                            userLat = location.latitude,
-                            userLng = location.longitude
-                        )
-                    }
+            val fusedLocationClient =
+                LocationServices.getFusedLocationProviderClient(context)
 
-                    viewModelScope.launch {
-                        converterCoordenadas(context, location.latitude, location.longitude)
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        _uiState.update {
+                            it.copy(
+                                userLat = location.latitude,
+                                userLng = location.longitude
+                            )
+                        }
+
+                        localizacaoExistente()
+
+                        viewModelScope.launch {
+                            converterCoordenadas(
+                                context,
+                                location.latitude,
+                                location.longitude
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(localizacaoAtual = "GPS indisponível")
+                        }
                     }
-                } else {
-                    _uiState.update { it.copy(localizacaoAtual = "GPS indisponível") }
                 }
-            }.addOnFailureListener {
-                _uiState.update { it.copy(localizacaoAtual = "Erro GPS") }
-            }
+                .addOnFailureListener {
+                    _uiState.update {
+                        it.copy(localizacaoAtual = "Erro GPS")
+                    }
+                }
+
         } catch (e: Exception) {
-            _uiState.update { it.copy(localizacaoAtual = "Sem permissão") }
+            _uiState.update {
+                it.copy(localizacaoAtual = "Sem permissão")
+            }
         }
     }
 
-    private fun converterCoordenadas(context: Context, lat: Double, long: Double) {
+    private fun converterCoordenadas(
+        context: Context,
+        lat: Double,
+        long: Double
+    ) {
         try {
             val geocoder = Geocoder(context, Locale.getDefault())
+
             @Suppress("DEPRECATION")
             val addresses = geocoder.getFromLocation(lat, long, 1)
 
             if (!addresses.isNullOrEmpty()) {
                 val end = addresses[0]
-                val texto = if (end.subLocality != null)
-                    "${end.thoroughfare}, ${end.subLocality}"
-                else
-                    end.thoroughfare ?: "Localização detectada"
+                val texto =
+                    if (end.subLocality != null)
+                        "${end.thoroughfare}, ${end.subLocality}"
+                    else
+                        end.thoroughfare ?: "Localização detectada"
 
-                _uiState.update { it.copy(localizacaoAtual = texto) }
+                _uiState.update {
+                    it.copy(localizacaoAtual = texto)
+                }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // FILTRO POR LOCALIZAÇÃO
+    // ----------------------------------------------------------------
+
+    fun filtroPorLocalizacao() {
+        val latUser = _uiState.value.userLat ?: return
+        val lngUser = _uiState.value.userLng ?: return
+        val raioKm = _uiState.value.radiusKm
+
+        viewModelScope.launch {
+            val filtrados = todosProdutosCache.filter { produto ->
+                val dono = UserRepository.getUsuarioPorId(produto.donoId)
+
+                dono?.latitude != null &&
+                        dono.longitude != null &&
+                        distanciaKm(
+                            latUser,
+                            lngUser,
+                            dono.latitude,
+                            dono.longitude
+                        ) <= raioKm
+            }
+
+            _uiState.update {
+                it.copy(produtos = filtrados)
+            }
+        }
+    }
+
+    fun limparFiltroLocalizacao() {
+        _uiState.update {
+            it.copy(produtos = todosProdutosCache)
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // LOCALIZAÇÃO -> FIREBASE
+    // ----------------------------------------------------------------
+
+    fun localizacaoExistente() {
+        val uid = uidUsuarioLogado ?: return
+        val lat = _uiState.value.userLat ?: return
+        val lng = _uiState.value.userLng ?: return
+
+        Log.d("LOC_DEBUG", "uid=$uid lat=$lat lng=$lng")
+
+        viewModelScope.launch {
+            UserRepository.atualizarLocalizacaoUsuario(
+                userId = uid,
+                latitude = lat,
+                longitude = lng
+            )
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // UTIL
+    // ----------------------------------------------------------------
+
+    private fun distanciaKm(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(Math.toRadians(lat1)) *
+                    Math.cos(Math.toRadians(lat2)) *
+                    Math.sin(dLon / 2) *
+                    Math.sin(dLon / 2)
+
+        return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     }
 }
